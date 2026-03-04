@@ -38,6 +38,7 @@ Auth priority: CLI flags > env vars > `~/.garmin_tokens/` (OAuth).
 ```bash
 python garmin_cli.py --help
 python garmin_cli.py activities search --limit 20 --start 0 --activity-type running
+python garmin_cli.py activities download --activity-id 22048373565
 python garmin_cli.py sleep stats --start-date 2026-02-21 --end-date 2026-02-27
 ```
 
@@ -45,5 +46,5 @@ See the module docstring in `garmin_cli.py` for all available commands, flags, a
 
 ## API Reference
 
-- **`garmin-api-spec.md`** — Primary API documentation (activities, sleep, scores, calendar). Covers the endpoints currently implemented in the CLI.
+- **`garmin-api-spec.md`** — Primary API documentation (activities, sleep, scores, calendar, FIT file download). Covers the endpoints currently implemented in the CLI plus the activity file download API.
 - **`garmin-api-from-garth.md`** — Supplementary endpoints extracted from the [garth](https://github.com/matin/garth) Python package. Covers wellness/health data (heart rate, HRV, stress, body battery, steps, weight, hydration, intensity minutes, training readiness/status, user profile/settings) not yet in the primary spec.

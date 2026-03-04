@@ -1,6 +1,6 @@
 # Garmin Connect API Documentation
 
-This document covers eight Garmin Connect APIs (curl commands copied from browser developer tools).
+This document covers nine Garmin Connect APIs (curl commands copied from browser developer tools).
 
 ---
 
@@ -1984,3 +1984,107 @@ Same `calendar-service` as API 7 (Monthly Calendar), but a sub-endpoint for retr
 
 - The `id` from a calendar note item (API 7) is used directly as the `{noteId}` path parameter
 - This is the only way to retrieve the full note body — the calendar endpoint only surfaces the title
+
+---
+
+## API 9: Activity File Download (FIT Export)
+
+```bash
+curl 'https://connect.garmin.com/gc-api/download-service/files/activity/{activityId}' \
+-X 'GET' \
+-H 'Accept: */*' \
+-H 'Sec-Fetch-Site: same-origin' \
+-H 'Cookie: <cookie>' \
+-H 'Sec-Fetch-Mode: cors' \
+-H 'Accept-Language: en-US,en;q=0.9' \
+-H 'Accept-Encoding: gzip, deflate, br, zstd' \
+-H 'Sec-Fetch-Dest: empty' \
+-H 'Connect-Csrf-Token: <csrf-token>' \
+-H 'Priority: u=3, i'
+```
+
+### Overview
+
+Downloads the original activity file (FIT format) as a ZIP archive. This is the raw data recorded by the Garmin device, containing detailed time-series data (GPS trackpoints, heart rate samples, cadence, power, etc.) that is not available through the JSON activity APIs (APIs 1 & 2).
+
+### Path Parameters
+
+| Parameter | Type | Example | Notes |
+|-----------|------|---------|-------|
+| `{activityId}` | number | `22048373565` | Activity ID from the activity list (API 1) or activity detail (API 2) |
+
+### Response Format
+
+- **Content-Type**: `application/x-zip-compressed`
+- **Content-Disposition**: `attachment; filename="{activityId}.zip"` (e.g. `22048373565.zip`)
+- **Compression**: Not Brotli — the response is a raw ZIP archive (unlike APIs 1–8 which return Brotli-compressed JSON)
+- **Cache-Control**: `no-cache, no-store, private`
+
+### ZIP Contents
+
+The ZIP archive contains a single file:
+
+| File | Format | Example |
+|------|--------|---------|
+| `{activityId}_ACTIVITY.fit` | Garmin FIT (Flexible and Interoperable Data Transfer) | `22048373565_ACTIVITY.fit` |
+
+Example from a real download:
+- **ZIP size**: 47,842 bytes
+- **FIT file size** (uncompressed): 116,612 bytes
+
+### How to Extract
+
+#### CLI
+
+```bash
+# Download and extract
+curl -o activity.zip 'https://connect.garmin.com/gc-api/download-service/files/activity/{activityId}' \
+  -H 'Cookie: <cookie>' -H 'Connect-Csrf-Token: <csrf-token>'
+unzip activity.zip
+# Result: {activityId}_ACTIVITY.fit
+```
+
+#### Python
+
+```python
+import zipfile, io
+
+# Assuming `response_content` is the raw bytes from the API
+with zipfile.ZipFile(io.BytesIO(response_content)) as zf:
+    zf.extractall('.')  # Extracts {activityId}_ACTIVITY.fit
+```
+
+### FIT File Format
+
+The FIT (Flexible and Interoperable Data Transfer) protocol is Garmin's binary format for activity data. It contains far more granular data than the JSON APIs, including:
+
+- **GPS trackpoints** — latitude, longitude, altitude at each recording interval
+- **Sensor time-series** — heart rate, cadence, power, speed at each second/interval
+- **Lap/split details** — auto-lap and manual lap markers with per-lap summaries
+- **Device info** — hardware model, firmware version, sensor accessories
+- **Running dynamics** — ground contact time, vertical oscillation, etc.
+- **Developer fields** — third-party app data (e.g. Stryd, Running Power)
+
+To parse FIT files in Python, use the `fitdecode` or `fitparse` libraries:
+
+```python
+# pip install fitdecode
+import fitdecode
+
+with fitdecode.FitReader('{activityId}_ACTIVITY.fit') as fit:
+    for frame in fit:
+        if isinstance(frame, fitdecode.FitDataMessage):
+            if frame.name == 'record':  # Per-second data points
+                print(frame.get_value('heart_rate'), frame.get_value('position_lat'))
+```
+
+### Relationship to Other APIs
+
+| Aspect | APIs 1 & 2 (Activity JSON) | API 9 (File Download) |
+|--------|---------------------------|----------------------|
+| Format | JSON (summary/aggregate data) | Binary FIT (raw device recording) |
+| Data granularity | Per-activity summaries, split summaries | Per-second time-series, GPS trackpoints |
+| GPS data | Start/end lat/lng only | Full GPS track |
+| Heart rate | Min/max/avg only | Every sample point |
+| Use case | Dashboards, search, analytics | Route mapping, detailed analysis, re-import |
+| Response type | Brotli-compressed JSON | ZIP-compressed FIT file |

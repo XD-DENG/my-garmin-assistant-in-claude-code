@@ -6,7 +6,8 @@
 """
 Garmin Connect CLI — A command-line tool for accessing Garmin Connect APIs.
 
-This tool wraps 8 Garmin Connect APIs and outputs raw JSON to stdout.
+This tool wraps 9 Garmin Connect APIs and outputs raw JSON to stdout (or
+downloads binary files for the FIT download command).
 It is designed for programmatic use (piping, scripting, LLM tool-use).
 
 ================================================================================
@@ -44,6 +45,10 @@ activities search   — Search/filter activities (API 1: activitylist-service)
 
 activities detail   — Get full detail for a single activity (API 2: activity-service)
   --activity-id INT    Garmin activity ID (required)
+
+activities download — Download original FIT file for an activity (API 9: download-service)
+  --activity-id INT    Garmin activity ID (required)
+  --output-dir PATH    Directory to save the FIT file (default: current directory)
 
 metrics hill-score  — Get daily hill score stats (API 3: metrics-service)
   --start-date DATE   Start date, YYYY-MM-DD (required)
@@ -93,6 +98,12 @@ python garmin_cli.py activities search --limit 100 --start 0 \\
 
 # Get detail for a specific activity
 python garmin_cli.py activities detail --activity-id 21942154782
+
+# Download original FIT file for an activity
+python garmin_cli.py activities download --activity-id 21942154782
+
+# Download FIT file to a specific directory
+python garmin_cli.py activities download --activity-id 21942154782 --output-dir /tmp
 
 # Get hill score for a date range
 python garmin_cli.py metrics hill-score --start-date 2026-01-30 --end-date 2026-02-26
@@ -230,6 +241,17 @@ class GarminClient:
             print(f"Error: Non-JSON response — {resp.text[:500]}", file=sys.stderr)
             sys.exit(1)
 
+    def _get_binary(self, url: str) -> bytes:
+        """Make a GET request and return raw bytes (for binary downloads)."""
+        if self.oauth1_token:
+            self._ensure_oauth2()
+        resp = self.session.get(url)
+        resp.raise_for_status()
+        if not resp.content:
+            print("Error: Empty response body. Session may have expired — re-run: python garmin_auth.py", file=sys.stderr)
+            sys.exit(1)
+        return resp.content
+
     # ── API 1: Activity List Search ──────────────────────────────────────
 
     def search_activities(
@@ -301,6 +323,38 @@ class GarminClient:
         return self._get(
             f"{self.base_url}/activity-service/activity/{activity_id}"
         )
+
+    # ── API 9: Activity File Download ─────────────────────────────────────
+
+    def download_activity(self, activity_id: int, output_dir: str = ".") -> str:
+        """Download the original FIT file for an activity.
+
+        Endpoint: GET {BASE}/download-service/files/activity/{activityId}
+
+        Args:
+            activity_id: Garmin activity ID (numeric).
+            output_dir: Directory to save the extracted FIT file (default: ".").
+
+        Returns:
+            Path to the extracted FIT file.
+        """
+        import io
+        import zipfile
+
+        data = self._get_binary(
+            f"{self.base_url}/download-service/files/activity/{activity_id}"
+        )
+
+        out = Path(output_dir)
+        out.mkdir(parents=True, exist_ok=True)
+
+        with zipfile.ZipFile(io.BytesIO(data)) as zf:
+            fit_names = [n for n in zf.namelist() if n.endswith(".fit")]
+            if not fit_names:
+                print("Error: ZIP contains no .fit files.", file=sys.stderr)
+                sys.exit(1)
+            zf.extract(fit_names[0], path=out)
+            return str(out / fit_names[0])
 
     # ── API 3: Hill Score Stats ──────────────────────────────────────────
 
@@ -496,6 +550,16 @@ def _setup_activities_detail(subparser: argparse._SubParsersAction) -> None:
     ))
 
 
+def _setup_activities_download(subparser: argparse._SubParsersAction) -> None:
+    p = subparser.add_parser("download", help="Download original FIT file for an activity (API 9)")
+    p.add_argument("--activity-id", type=int, required=True, help="Garmin activity ID")
+    p.add_argument("--output-dir", default=".", help="Directory to save the FIT file (default: current directory)")
+    p.set_defaults(func=lambda client, args: client.download_activity(
+        activity_id=args.activity_id,
+        output_dir=args.output_dir,
+    ))
+
+
 def _setup_metrics_hill_score(subparser: argparse._SubParsersAction) -> None:
     p = subparser.add_parser("hill-score", help="Get daily hill score stats (API 3)")
     p.add_argument("--start-date", required=True, help="Start date, YYYY-MM-DD")
@@ -577,6 +641,7 @@ def build_parser() -> argparse.ArgumentParser:
     activities_sub = activities_parser.add_subparsers(dest="subcommand", help="Activity subcommand")
     _setup_activities_search(activities_sub)
     _setup_activities_detail(activities_sub)
+    _setup_activities_download(activities_sub)
 
     # metrics
     metrics_parser = subparsers.add_parser("metrics", help="Metrics APIs (hill score, endurance score)")
@@ -639,6 +704,11 @@ def main() -> None:
     except requests.HTTPError as e:
         print(f"Error: HTTP {e.response.status_code} — {e.response.text[:500]}", file=sys.stderr)
         sys.exit(1)
+
+    # Binary download commands return a file path string, not JSON
+    if isinstance(result, str):
+        print(f"Saved: {result}", file=sys.stderr)
+        return
 
     output = json.dumps(result, ensure_ascii=False, indent=2)
 

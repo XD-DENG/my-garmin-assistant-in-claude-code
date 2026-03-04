@@ -33,6 +33,22 @@ If the user prefers, they can provide credentials via env vars (`GARMIN_COOKIE`,
 
 - **Parent/sub-type naming overlap** — some parent type keys are reused as sub-type `typeKey` values in response data. For example, `running` is both the parent type and the `typeKey` for road/generic runs. When the user says "running", they typically mean **all running** (the parent), not just the `running` sub-type. When breaking down sub-types, label the `running` typeKey as "road/generic running" to avoid ambiguity.
 
+### Downloading FIT Files
+
+To download the raw FIT file for an activity (API 9: download-service):
+
+```bash
+# Download FIT file (extracts from ZIP automatically)
+python garmin_cli.py activities download --activity-id 22048373565
+
+# Download to a specific directory
+python garmin_cli.py activities download --activity-id 22048373565 --output-dir /tmp
+```
+
+The FIT file is saved as `{activityId}_ACTIVITY.fit`. To get the activity ID, use `python garmin_cli.py activities search` first and read the `activityId` field from the results.
+
+To parse the FIT file, use `fitdecode` (`pip install fitdecode`). See API 9 in `garmin-api-spec.md` for details on the FIT format and what data it contains (GPS trackpoints, per-second HR/cadence/power, laps, etc.).
+
 ## API Spec
 
 Full API documentation is in `garmin-api-spec.md`. Reference this when adding new endpoints to the CLI.
