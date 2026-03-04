@@ -36,3 +36,5 @@ If the user prefers, they can provide credentials via env vars (`GARMIN_COOKIE`,
 ## API Spec
 
 Full API documentation is in `garmin-api-spec.md`. Reference this when adding new endpoints to the CLI.
+
+If the user requests data not covered by `garmin-api-spec.md` (e.g. heart rate time-series, HRV, stress, body battery, steps, weight, hydration, intensity minutes, training readiness/status, user profile/settings), check `garmin-api-from-garth.md` for additional endpoints. These were extracted from the [garth](https://github.com/matin/garth) Python package and cover many wellness/health APIs that the primary spec does not.

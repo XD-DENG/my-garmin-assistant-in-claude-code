@@ -42,3 +42,8 @@ python garmin_cli.py sleep stats --start-date 2026-02-21 --end-date 2026-02-27
 ```
 
 See the module docstring in `garmin_cli.py` for all available commands, flags, and examples.
+
+## API Reference
+
+- **`garmin-api-spec.md`** — Primary API documentation (activities, sleep, scores, calendar). Covers the endpoints currently implemented in the CLI.
+- **`garmin-api-from-garth.md`** — Supplementary endpoints extracted from the [garth](https://github.com/matin/garth) Python package. Covers wellness/health data (heart rate, HRV, stress, body battery, steps, weight, hydration, intensity minutes, training readiness/status, user profile/settings) not yet in the primary spec.
