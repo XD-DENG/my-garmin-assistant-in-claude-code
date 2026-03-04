@@ -18,7 +18,11 @@ When needing the Cookie and Token, ask the user to paste the curl command from b
 
 - **Global flags (`--output`, `--cookie`, `--csrf-token`) must appear BEFORE the subcommand**. This is an argparse limitation. Example: `python garmin_cli.py --output file.json activities search --limit 5 --start 0` (correct) vs `... activities search --limit 5 --output file.json` (wrong — argparse error).
 
-- **`--activity-type` only accepts parent types** (e.g. `running`, `cycling`), NOT sub-types (e.g. `trail_running`, `pickleball`). The API returns error `"Activity type cannot be an activity sub type"`. To find sub-type activities, use `--search <name>` instead. Note: `--search` does free-text matching on activity names, so results may include false positives from other activity types that happen to contain the search term — filter by `activityType.typeKey` in the response to get exact matches.
+- **Activity type filtering uses two flags**: `--activity-type` for parent types (e.g. `running`, `racket_sports`, `winter_sports`, `fitness_equipment`) and `--activity-sub-type` for sub-types (e.g. `trail_running`, `tennis_v2`, `resort_skiing_snowboarding_ws`). Use `--activity-type` alone to get all activities in a category, or add `--activity-sub-type` to narrow down. `--activity-sub-type` requires `--activity-type`.
+
+- **Sub-type keys are non-obvious** — they often don't match the common activity name (e.g. `tennis_v2` not `tennis`, `resort_skiing_snowboarding_ws` not `skiing`). When unsure of the key, use `--search` first and inspect `activityType.typeKey` in the response to discover the actual key. Note: `--search` does free-text matching on activity names, so results may include false positives — filter by `activityType.typeKey` to get exact matches.
+
+- **Parent/sub-type naming overlap** — some parent type keys are reused as sub-type `typeKey` values in response data. For example, `running` is both the parent type and the `typeKey` for road/generic runs. When the user says "running", they typically mean **all running** (the parent), not just the `running` sub-type. When breaking down sub-types, label the `running` typeKey as "road/generic running" to avoid ambiguity.
 
 ## API Spec
 

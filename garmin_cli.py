@@ -32,9 +32,10 @@ activities search   — Search/filter activities (API 1: activitylist-service)
   --limit INT          Max results to return (required)
   --start INT          Pagination offset, 0-indexed (required)
   --search TEXT        Free-text search across activity names
-  --activity-type TEXT Activity type key — must be a PARENT type (e.g. "running",
-                       "cycling"), NOT a sub-type (e.g. "trail_running", "pickleball").
-                       To find sub-type activities, use --search instead.
+  --activity-type TEXT Parent activity type key (e.g. "running", "racket_sports",
+                       "winter_sports", "fitness_equipment").
+  --activity-sub-type TEXT  Activity sub-type key (e.g. "trail_running", "tennis_v2",
+                       "resort_skiing_snowboarding_ws"). Requires --activity-type.
   --start-date DATE   Filter start date, YYYY-MM-DD, inclusive
   --end-date DATE     Filter end date, YYYY-MM-DD, inclusive
   --exclude-children  Exclude child activities (multi-sport sub-activities)
@@ -215,6 +216,7 @@ class GarminClient:
         start: int,
         search: str | None = None,
         activity_type: str | None = None,
+        activity_sub_type: str | None = None,
         start_date: str | None = None,
         end_date: str | None = None,
         exclude_children: bool | None = None,
@@ -227,10 +229,11 @@ class GarminClient:
             limit: Max number of activities to return.
             start: Pagination offset (0-indexed).
             search: Free-text search across activity names.
-            activity_type: Filter by activity PARENT type key (e.g. "running",
-                "cycling"). The API rejects sub-types like "trail_running" or
-                "pickleball" with error "Activity type cannot be an activity
-                sub type". Use `search` to find activities by sub-type name.
+            activity_type: Filter by parent activity type key (e.g. "running",
+                "racket_sports", "winter_sports", "fitness_equipment").
+            activity_sub_type: Filter by activity sub-type key (e.g.
+                "trail_running", "tennis_v2", "resort_skiing_snowboarding_ws").
+                Requires activity_type to be set.
             start_date: Filter start date, YYYY-MM-DD, inclusive.
             end_date: Filter end date, YYYY-MM-DD, inclusive.
             exclude_children: Whether to exclude child activities (multi-sport).
@@ -245,6 +248,8 @@ class GarminClient:
             params["search"] = search
         if activity_type is not None:
             params["activityType"] = activity_type
+        if activity_sub_type is not None:
+            params["activitySubType"] = activity_sub_type
         if start_date is not None:
             params["startDate"] = start_date
         if end_date is not None:
@@ -444,7 +449,8 @@ def _setup_activities_search(subparser: argparse._SubParsersAction) -> None:
     p.add_argument("--limit", type=int, required=True, help="Max results to return")
     p.add_argument("--start", type=int, required=True, help="Pagination offset (0-indexed)")
     p.add_argument("--search", help="Free-text search across activity names")
-    p.add_argument("--activity-type", help='Parent activity type key (e.g. "running", "cycling"). Sub-types like "trail_running" or "pickleball" are rejected by the API — use --search instead.')
+    p.add_argument("--activity-type", help='Parent activity type key (e.g. "running", "racket_sports", "winter_sports", "fitness_equipment").')
+    p.add_argument("--activity-sub-type", help='Activity sub-type key (e.g. "trail_running", "tennis_v2"). Requires --activity-type.')
     p.add_argument("--start-date", help="Filter start date, YYYY-MM-DD, inclusive")
     p.add_argument("--end-date", help="Filter end date, YYYY-MM-DD, inclusive")
     p.add_argument("--exclude-children", action="store_true", default=None, help="Exclude child activities (multi-sport)")
@@ -453,6 +459,7 @@ def _setup_activities_search(subparser: argparse._SubParsersAction) -> None:
         start=args.start,
         search=args.search,
         activity_type=args.activity_type,
+        activity_sub_type=args.activity_sub_type,
         start_date=args.start_date,
         end_date=args.end_date,
         exclude_children=args.exclude_children if args.exclude_children else None,
