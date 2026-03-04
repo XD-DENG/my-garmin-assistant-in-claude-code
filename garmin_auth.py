@@ -2,6 +2,9 @@
 """
 Garmin Connect Auth — Log in via Garmin SSO and save OAuth tokens.
 
+Auth flow is based on the garth library (https://github.com/matin/garth),
+simplified into a single flat script for readability and auditability.
+
 Mimics the Garmin Connect Mobile app's login flow:
   1. POST email+password to sso.garmin.com → get a login ticket
   2. Exchange ticket for an OAuth1 token (~1 year lifespan)
@@ -258,6 +261,19 @@ def load_tokens() -> tuple[dict, dict] | None:
 # ── Main ──────────────────────────────────────────────────────────────────
 
 def main() -> None:
+    # Check for existing tokens and try to refresh
+    existing = load_tokens()
+    if existing:
+        oauth1, oauth2 = existing
+        print("Found existing tokens, refreshing OAuth2...")
+        try:
+            oauth2 = exchange_oauth2(oauth1)
+            save_tokens(oauth1, oauth2)
+            print("OAuth2 token refreshed successfully.")
+            return
+        except Exception as e:
+            print(f"Refresh failed ({e}), need to log in again.")
+
     email = input("Garmin email: ")
     password = getpass.getpass("Garmin password: ")
 
