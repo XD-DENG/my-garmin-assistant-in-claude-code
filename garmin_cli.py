@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # /// script
 # requires-python = ">=3.9"
-# dependencies = ["requests", "brotli"]
+# dependencies = ["requests", "brotli", "requests-oauthlib"]
 # ///
 """
 Garmin Connect CLI — A command-line tool for accessing Garmin Connect APIs.
@@ -13,16 +13,18 @@ It is designed for programmatic use (piping, scripting, LLM tool-use).
 AUTHENTICATION
 ================================================================================
 
-Two credentials are required (extracted from browser dev tools on connect.garmin.com):
-  - Cookie: the full Cookie header value
-  - CSRF Token: the Connect-Csrf-Token header value
+Recommended: run `python garmin_auth.py` to log in with your Garmin email
+and password. Tokens are saved to ~/.garmin_tokens/ and the CLI uses them
+automatically. OAuth1 token lasts ~1 year; OAuth2 refreshes automatically.
 
-Provide them via environment variables (recommended):
+Alternative: provide Cookie + CSRF token manually (from browser dev tools):
   export GARMIN_COOKIE='your_cookie_value'
   export GARMIN_CSRF_TOKEN='your_csrf_token_value'
 
-Or via CLI flags (overrides env vars):
+Or via CLI flags (overrides everything):
   python garmin_cli.py --cookie '...' --csrf-token '...' <command>
+
+Auth priority: CLI flags > env vars > ~/.garmin_tokens/ (OAuth).
 
 ================================================================================
 SUBCOMMANDS
@@ -148,63 +150,83 @@ import argparse
 import json
 import os
 import sys
+import time
+from pathlib import Path
 from typing import Any
 
 import requests
 
 
-BASE_URL = "https://connect.garmin.com/gc-api"
+BASE_URL_COOKIE = "https://connect.garmin.com/gc-api"
+BASE_URL_OAUTH = "https://connectapi.garmin.com"
 
 
 class GarminClient:
     """HTTP client for Garmin Connect APIs.
 
-    Handles authentication headers and JSON response parsing for all
-    Garmin Connect API endpoints.
+    Supports two auth modes:
+      - Cookie-based: uses Cookie + CSRF token headers against connect.garmin.com
+      - OAuth-based: uses Bearer token against connectapi.garmin.com (recommended)
     """
 
-    def __init__(self, cookie: str, csrf_token: str):
-        """Initialize with authentication credentials.
-
-        Args:
-            cookie: Full Cookie header value from connect.garmin.com.
-            csrf_token: Connect-Csrf-Token header value from connect.garmin.com.
-        """
+    def __init__(
+        self,
+        cookie: str | None = None,
+        csrf_token: str | None = None,
+        oauth1_token: dict | None = None,
+        oauth2_token: dict | None = None,
+    ):
         self.session = requests.Session()
-        self.session.headers.update({
-            "Cookie": cookie,
-            "Connect-Csrf-Token": csrf_token,
-            "Accept": "*/*",
-            "Accept-Encoding": "gzip, deflate, br",
-            "Accept-Language": "en-US,en;q=0.9",
-            "Sec-Fetch-Site": "same-origin",
-            "Sec-Fetch-Mode": "cors",
-            "Sec-Fetch-Dest": "empty",
-        })
+        self.oauth1_token = oauth1_token
+        self.oauth2_token = oauth2_token
+
+        if cookie:
+            # Cookie-based auth (web browser flow)
+            self.base_url = BASE_URL_COOKIE
+            self.session.headers.update({
+                "Cookie": cookie,
+                "Connect-Csrf-Token": csrf_token or "",
+                "Accept": "*/*",
+                "Accept-Encoding": "gzip, deflate, br",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Sec-Fetch-Site": "same-origin",
+                "Sec-Fetch-Mode": "cors",
+                "Sec-Fetch-Dest": "empty",
+            })
+        else:
+            # OAuth-based auth (mobile app flow)
+            self.base_url = BASE_URL_OAUTH
+            self._ensure_oauth2()
+            self.session.headers.update({
+                "Authorization": f"Bearer {self.oauth2_token['access_token']}",
+                "User-Agent": "com.garmin.android.apps.connectmobile",
+            })
+
+    def _ensure_oauth2(self) -> None:
+        """Refresh OAuth2 token if expired, using the OAuth1 token."""
+        if not self.oauth2_token or self.oauth2_token.get("expires_at", 0) < time.time():
+            if not self.oauth1_token:
+                print("Error: OAuth2 token expired and no OAuth1 token to refresh.", file=sys.stderr)
+                sys.exit(1)
+            print("OAuth2 token expired, refreshing...", file=sys.stderr)
+            # Import here to avoid requiring requests-oauthlib for cookie auth
+            from garmin_auth import exchange_oauth2, save_tokens
+            self.oauth2_token = exchange_oauth2(self.oauth1_token)
+            save_tokens(self.oauth1_token, self.oauth2_token)
+            self.session.headers["Authorization"] = f"Bearer {self.oauth2_token['access_token']}"
 
     def _get(self, url: str, params: dict[str, Any] | None = None) -> Any:
-        """Make a GET request and return parsed JSON.
-
-        Args:
-            url: Full URL to request.
-            params: Optional query parameters.
-
-        Returns:
-            Parsed JSON response (dict or list).
-
-        Raises:
-            requests.HTTPError: If the response status is not 2xx.
-            SystemExit: If the response body is empty or not valid JSON.
-        """
+        """Make a GET request and return parsed JSON."""
+        if self.oauth1_token:
+            self._ensure_oauth2()
         resp = self.session.get(url, params=params)
         resp.raise_for_status()
         if not resp.text.strip():
-            print("Error: Empty response body. Session may have expired — re-extract credentials from browser.", file=sys.stderr)
+            print("Error: Empty response body. Session may have expired — re-run: python garmin_auth.py", file=sys.stderr)
             sys.exit(1)
         try:
             return resp.json()
         except requests.exceptions.JSONDecodeError:
-            # API returns non-JSON error messages for some bad requests
             print(f"Error: Non-JSON response — {resp.text[:500]}", file=sys.stderr)
             sys.exit(1)
 
@@ -257,7 +279,7 @@ class GarminClient:
         if exclude_children is not None:
             params["excludeChildren"] = str(exclude_children).lower()
         return self._get(
-            f"{BASE_URL}/activitylist-service/activities/search/activities",
+            f"{self.base_url}/activitylist-service/activities/search/activities",
             params=params,
         )
 
@@ -277,7 +299,7 @@ class GarminClient:
             and splitSummaries array with per-split metrics.
         """
         return self._get(
-            f"{BASE_URL}/activity-service/activity/{activity_id}"
+            f"{self.base_url}/activity-service/activity/{activity_id}"
         )
 
     # ── API 3: Hill Score Stats ──────────────────────────────────────────
@@ -303,7 +325,7 @@ class GarminClient:
             enduranceScore on a 0-100 scale).
         """
         return self._get(
-            f"{BASE_URL}/metrics-service/metrics/hillscore/stats",
+            f"{self.base_url}/metrics-service/metrics/hillscore/stats",
             params={
                 "startDate": start_date,
                 "endDate": end_date,
@@ -335,7 +357,7 @@ class GarminClient:
             tiers: Intermediate/Trained/WellTrained/Expert/Superior/Elite).
         """
         return self._get(
-            f"{BASE_URL}/metrics-service/metrics/endurancescore/stats",
+            f"{self.base_url}/metrics-service/metrics/endurancescore/stats",
             params={
                 "startDate": start_date,
                 "endDate": end_date,
@@ -361,7 +383,7 @@ class GarminClient:
             avgHeartRate, avgOvernightHrv, spO2, bodyBatteryChange, etc.).
         """
         return self._get(
-            f"{BASE_URL}/sleep-service/stats/sleep/daily/{start_date}/{end_date}"
+            f"{self.base_url}/sleep-service/stats/sleep/daily/{start_date}/{end_date}"
         )
 
     # ── API 6: Daily Sleep Detail ────────────────────────────────────────
@@ -389,7 +411,7 @@ class GarminClient:
             (3-min), hrvData (5-min), wellnessEpochSPO2DataDTOList (1-min).
         """
         return self._get(
-            f"{BASE_URL}/sleep-service/sleep/dailySleepData",
+            f"{self.base_url}/sleep-service/sleep/dailySleepData",
             params={
                 "date": date,
                 "nonSleepBufferMinutes": non_sleep_buffer_minutes,
@@ -419,7 +441,7 @@ class GarminClient:
         """
         api_month = month - 1  # Convert 1-indexed to 0-indexed
         return self._get(
-            f"{BASE_URL}/calendar-service/year/{year}/month/{api_month}"
+            f"{self.base_url}/calendar-service/year/{year}/month/{api_month}"
         )
 
     # ── API 8: Calendar Note Detail ──────────────────────────────────────
@@ -437,7 +459,7 @@ class GarminClient:
             may be multi-line and contain Chinese characters), and date.
         """
         return self._get(
-            f"{BASE_URL}/calendar-service/note/{note_id}"
+            f"{self.base_url}/calendar-service/note/{note_id}"
         )
 
 
@@ -589,18 +611,28 @@ def main() -> None:
         # Print help for the command group
         parser.parse_args([args.command, "--help"])
 
-    # Resolve auth
+    # Resolve auth: CLI flags > env vars > OAuth tokens
     cookie = args.cookie or os.environ.get("GARMIN_COOKIE")
     csrf_token = args.csrf_token or os.environ.get("GARMIN_CSRF_TOKEN")
 
-    if not cookie:
-        print("Error: Cookie required. Set GARMIN_COOKIE env var or use --cookie flag.", file=sys.stderr)
-        sys.exit(1)
-    if not csrf_token:
-        print("Error: CSRF token required. Set GARMIN_CSRF_TOKEN env var or use --csrf-token flag.", file=sys.stderr)
-        sys.exit(1)
-
-    client = GarminClient(cookie=cookie, csrf_token=csrf_token)
+    if cookie:
+        client = GarminClient(cookie=cookie, csrf_token=csrf_token)
+    else:
+        # Try OAuth tokens from ~/.garmin_tokens/
+        from garmin_auth import load_tokens
+        tokens = load_tokens()
+        if tokens:
+            oauth1, oauth2 = tokens
+            client = GarminClient(oauth1_token=oauth1, oauth2_token=oauth2)
+        else:
+            print(
+                "Error: No credentials found. Either:\n"
+                "  1. Run: python garmin_auth.py  (log in with email/password)\n"
+                "  2. Set GARMIN_COOKIE + GARMIN_CSRF_TOKEN env vars\n"
+                "  3. Use --cookie + --csrf-token flags",
+                file=sys.stderr,
+            )
+            sys.exit(1)
 
     try:
         result = args.func(client, args)

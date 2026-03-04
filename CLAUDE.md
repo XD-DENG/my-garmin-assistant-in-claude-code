@@ -8,11 +8,20 @@ Read the module docstring at the top of `garmin_cli.py` for all available comman
 
 ### Authentication
 
-Auth requires two env vars: `GARMIN_COOKIE` and `GARMIN_CSRF_TOKEN` (extracted from browser dev tools on connect.garmin.com).
+Auth priority: CLI flags > env vars > `~/.garmin_tokens/` (OAuth).
 
-When needing the Cookie and Token, ask the user to paste the curl command from browser dev tools (in which cookie and token are available), then parse these info from the curl command for the user.
+**Preferred method — OAuth login:**
+1. Run `python garmin_auth.py` — prompts for Garmin email + password
+2. Tokens are saved to `~/.garmin_tokens/` (OAuth1 lasts ~1 year, OAuth2 auto-refreshes)
+3. The CLI reads tokens automatically — no flags or env vars needed
+4. Re-run `python garmin_auth.py` if the OAuth1 token eventually expires (~1 year)
 
-**Cookie shell escaping**: The Garmin cookie contains `|`, `*`, `~`, and other characters that break shell variable expansion. Write the cookie to a temp file using a Bash heredoc (`cat > /tmp/garmin_cookie.txt << 'EOF'`), then pass it to the CLI via `--cookie "$(cat /tmp/garmin_cookie.txt)"`. Do NOT paste the cookie directly into a shell `export` command or use the Write tool (which may fail if the file hasn't been read first).
+When the user gets auth errors, tell them to re-run `python garmin_auth.py`.
+
+**Fallback method — manual cookie auth:**
+If the user prefers, they can provide credentials via env vars (`GARMIN_COOKIE`, `GARMIN_CSRF_TOKEN`) or CLI flags (`--cookie`, `--csrf-token`). Ask the user to paste the curl command from browser dev tools, then parse the cookie and token from it.
+
+**Cookie shell escaping** (only relevant for cookie auth): The Garmin cookie contains `|`, `*`, `~`, and other characters that break shell variable expansion. Write the cookie to a temp file using a Bash heredoc (`cat > /tmp/garmin_cookie.txt << 'EOF'`), then pass it to the CLI via `--cookie "$(cat /tmp/garmin_cookie.txt)"`. Do NOT paste the cookie directly into a shell `export` command or use the Write tool (which may fail if the file hasn't been read first).
 
 ### CLI Gotchas
 

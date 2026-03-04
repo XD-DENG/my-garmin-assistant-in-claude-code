@@ -7,23 +7,31 @@ A command-line tool for accessing Garmin Connect APIs. Outputs raw JSON for prog
 ```bash
 python3 -m venv venv
 source venv/bin/activate
-pip install requests brotli
+pip install requests brotli requests-oauthlib
 ```
 
 ## Authentication
 
-Extract these two values from browser dev tools on [connect.garmin.com](https://connect.garmin.com):
-- **Cookie**: the full `Cookie` header value
-- **CSRF Token**: the `Connect-Csrf-Token` header value
+### Recommended: OAuth login (no browser dev tools needed)
 
-Set them as environment variables:
+Log in with your Garmin email and password:
+
+```bash
+python garmin_auth.py
+```
+
+Tokens are saved to `~/.garmin_tokens/`. The OAuth1 token lasts ~1 year; OAuth2 tokens refresh automatically. The CLI reads tokens automatically — no env vars or flags needed.
+
+### Alternative: Manual cookie auth
+
+Extract Cookie + CSRF token from browser dev tools on [connect.garmin.com](https://connect.garmin.com) and provide them via env vars or CLI flags:
 
 ```bash
 export GARMIN_COOKIE='your_cookie_value'
 export GARMIN_CSRF_TOKEN='your_csrf_token_value'
 ```
 
-Or pass them as CLI flags: `--cookie '...' --csrf-token '...'`
+Auth priority: CLI flags > env vars > `~/.garmin_tokens/` (OAuth).
 
 ## Usage
 
