@@ -2,7 +2,7 @@
 
 ## Garmin Connect CLI
 
-To access Garmin Connect data, use the CLI at `garmin_cli.py`. Run with `python garmin_cli.py` (using the venv described in README.md). If needed to install dependencies, follow the instruciton in README.md.
+To access Garmin Connect data, use the CLI at `garmin_cli.py`. Run with `python garmin_cli.py` (using the venv described in README.md). If needed to install dependencies, follow the instructions in README.md.
 
 Read the module docstring at the top of `garmin_cli.py` for all available commands, flags, and examples.
 
@@ -24,6 +24,8 @@ If the user prefers, they can provide credentials via env vars (`GARMIN_COOKIE`,
 **Cookie shell escaping** (only relevant for cookie auth): The Garmin cookie contains `|`, `*`, `~`, and other characters that break shell variable expansion. Write the cookie to a temp file using a Bash heredoc (`cat > /tmp/garmin_cookie.txt << 'EOF'`), then pass it to the CLI via `--cookie "$(cat /tmp/garmin_cookie.txt)"`. Do NOT paste the cookie directly into a shell `export` command or use the Write tool (which may fail if the file hasn't been read first).
 
 ### CLI Gotchas
+
+- **`--start 0` is required for `activities search`** — it's easy to forget but the command will fail without it. Always include `--start 0` (or another offset) alongside `--limit`.
 
 - **Global flags (`--output`, `--cookie`, `--csrf-token`) must appear BEFORE the subcommand**. This is an argparse limitation. Example: `python garmin_cli.py --output file.json activities search --limit 5 --start 0` (correct) vs `... activities search --limit 5 --output file.json` (wrong — argparse error).
 
