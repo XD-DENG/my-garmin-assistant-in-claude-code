@@ -12,11 +12,11 @@ Auth requires two env vars: `GARMIN_COOKIE` and `GARMIN_CSRF_TOKEN` (extracted f
 
 When needing the Cookie and Token, ask the user to paste the curl command from browser dev tools (in which cookie and token are available), then parse these info from the curl command for the user.
 
-**Cookie shell escaping**: The Garmin cookie contains `|`, `*`, `~`, and other characters that break shell variable expansion. Always pass credentials via env vars using `"$(cat file)"` or write a helper script — do NOT paste the cookie directly into a shell `export` command.
+**Cookie shell escaping**: The Garmin cookie contains `|`, `*`, `~`, and other characters that break shell variable expansion. Write the cookie to a temp file using a Bash heredoc (`cat > /tmp/garmin_cookie.txt << 'EOF'`), then pass it to the CLI via `--cookie "$(cat /tmp/garmin_cookie.txt)"`. Do NOT paste the cookie directly into a shell `export` command or use the Write tool (which may fail if the file hasn't been read first).
 
 ### CLI Gotchas
 
-- **Global flags (`--output`, `--cookie`, `--csrf-token`) must appear BEFORE the subcommand**. This is an argparse limitation. Example: `uv run garmin_cli.py --output file.json activities search --limit 5 --start 0` (correct) vs `... activities search --limit 5 --output file.json` (wrong — argparse error).
+- **Global flags (`--output`, `--cookie`, `--csrf-token`) must appear BEFORE the subcommand**. This is an argparse limitation. Example: `python garmin_cli.py --output file.json activities search --limit 5 --start 0` (correct) vs `... activities search --limit 5 --output file.json` (wrong — argparse error).
 
 - **`--activity-type` only accepts parent types** (e.g. `running`, `cycling`), NOT sub-types (e.g. `trail_running`, `pickleball`). The API returns error `"Activity type cannot be an activity sub type"`. To find sub-type activities, use `--search <name>` instead. Note: `--search` does free-text matching on activity names, so results may include false positives from other activity types that happen to contain the search term — filter by `activityType.typeKey` in the response to get exact matches.
 

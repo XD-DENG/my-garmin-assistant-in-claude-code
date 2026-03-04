@@ -7,7 +7,7 @@ A command-line tool for accessing Garmin Connect APIs. Outputs raw JSON for prog
 ```bash
 python3 -m venv venv
 source venv/bin/activate
-pip install requests
+pip install requests brotli
 ```
 
 ## Authentication

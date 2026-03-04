@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # /// script
 # requires-python = ">=3.9"
-# dependencies = ["requests"]
+# dependencies = ["requests", "brotli"]
 # ///
 """
 Garmin Connect CLI — A command-line tool for accessing Garmin Connect APIs.
