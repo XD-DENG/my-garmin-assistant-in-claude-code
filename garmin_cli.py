@@ -32,7 +32,9 @@ activities search   — Search/filter activities (API 1: activitylist-service)
   --limit INT          Max results to return (required)
   --start INT          Pagination offset, 0-indexed (required)
   --search TEXT        Free-text search across activity names
-  --activity-type TEXT Activity type key (e.g. "running", "trail_running", "cycling")
+  --activity-type TEXT Activity type key — must be a PARENT type (e.g. "running",
+                       "cycling"), NOT a sub-type (e.g. "trail_running", "pickleball").
+                       To find sub-type activities, use --search instead.
   --start-date DATE   Filter start date, YYYY-MM-DD, inclusive
   --end-date DATE     Filter end date, YYYY-MM-DD, inclusive
   --exclude-children  Exclude child activities (multi-sport sub-activities)
@@ -67,7 +69,7 @@ calendar note       — Get full content of a calendar note (API 8: calendar-ser
   --note-id INT        Note ID from calendar item (required)
 
 ================================================================================
-GLOBAL FLAGS
+GLOBAL FLAGS (must appear BEFORE subcommand)
 ================================================================================
 
   --cookie TEXT        Cookie header value (overrides GARMIN_COOKIE env var)
@@ -78,9 +80,13 @@ GLOBAL FLAGS
 EXAMPLES
 ================================================================================
 
-# Search for running activities in January 2026
+# Search for running activities (parent type) in January 2026
 python garmin_cli.py activities search --limit 20 --start 0 \\
   --activity-type running --start-date 2026-01-01 --end-date 2026-01-31
+
+# Search for pickleball activities (sub-type — use --search, not --activity-type)
+python garmin_cli.py activities search --limit 100 --start 0 \\
+  --search pickleball --start-date 2025-01-01 --end-date 2026-03-02
 
 # Get detail for a specific activity
 python garmin_cli.py activities detail --activity-id 21942154782
@@ -103,8 +109,8 @@ python garmin_cli.py calendar month --year 2026 --month 1
 # Get a note's full content
 python garmin_cli.py calendar note --note-id 126088664
 
-# Save output to a file
-python garmin_cli.py activities search --limit 5 --start 0 --output activities.json
+# Save output to a file (--output is a global flag, must come before subcommand)
+python garmin_cli.py --output activities.json activities search --limit 5 --start 0
 
 # Using CLI flags for auth instead of env vars
 python garmin_cli.py --cookie 'my_cookie' --csrf-token 'my_token' \\
@@ -187,10 +193,19 @@ class GarminClient:
 
         Raises:
             requests.HTTPError: If the response status is not 2xx.
+            SystemExit: If the response body is empty or not valid JSON.
         """
         resp = self.session.get(url, params=params)
         resp.raise_for_status()
-        return resp.json()
+        if not resp.text.strip():
+            print("Error: Empty response body. Session may have expired — re-extract credentials from browser.", file=sys.stderr)
+            sys.exit(1)
+        try:
+            return resp.json()
+        except requests.exceptions.JSONDecodeError:
+            # API returns non-JSON error messages for some bad requests
+            print(f"Error: Non-JSON response — {resp.text[:500]}", file=sys.stderr)
+            sys.exit(1)
 
     # ── API 1: Activity List Search ──────────────────────────────────────
 
@@ -212,8 +227,10 @@ class GarminClient:
             limit: Max number of activities to return.
             start: Pagination offset (0-indexed).
             search: Free-text search across activity names.
-            activity_type: Filter by activity type key (e.g. "running",
-                "trail_running", "cycling", "pilates").
+            activity_type: Filter by activity PARENT type key (e.g. "running",
+                "cycling"). The API rejects sub-types like "trail_running" or
+                "pickleball" with error "Activity type cannot be an activity
+                sub type". Use `search` to find activities by sub-type name.
             start_date: Filter start date, YYYY-MM-DD, inclusive.
             end_date: Filter end date, YYYY-MM-DD, inclusive.
             exclude_children: Whether to exclude child activities (multi-sport).
@@ -427,7 +444,7 @@ def _setup_activities_search(subparser: argparse._SubParsersAction) -> None:
     p.add_argument("--limit", type=int, required=True, help="Max results to return")
     p.add_argument("--start", type=int, required=True, help="Pagination offset (0-indexed)")
     p.add_argument("--search", help="Free-text search across activity names")
-    p.add_argument("--activity-type", help='Activity type key (e.g. "running", "trail_running", "cycling")')
+    p.add_argument("--activity-type", help='Parent activity type key (e.g. "running", "cycling"). Sub-types like "trail_running" or "pickleball" are rejected by the API — use --search instead.')
     p.add_argument("--start-date", help="Filter start date, YYYY-MM-DD, inclusive")
     p.add_argument("--end-date", help="Filter end date, YYYY-MM-DD, inclusive")
     p.add_argument("--exclude-children", action="store_true", default=None, help="Exclude child activities (multi-sport)")
@@ -519,7 +536,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--cookie", help="Cookie header value (overrides GARMIN_COOKIE env var)")
     parser.add_argument("--csrf-token", help="CSRF token value (overrides GARMIN_CSRF_TOKEN env var)")
-    parser.add_argument("--output", help="Write JSON output to a file instead of stdout")
+    # Note: --output is intentionally on the root parser so it can be used with any
+    # subcommand. However, argparse requires global flags to appear BEFORE the subcommand.
+    # Example: garmin_cli.py --output file.json activities search --limit 5 --start 0
+    parser.add_argument("--output", help="Write JSON output to a file instead of stdout (must appear before subcommand)")
 
     subparsers = parser.add_subparsers(dest="command", help="API command group")
 

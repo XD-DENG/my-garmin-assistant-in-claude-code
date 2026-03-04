@@ -47,7 +47,7 @@ curl 'https://connect.garmin.com/gc-api/activitylist-service/activities/search/a
 | `limit` | number | Yes | `20` | Max number of activities to return |
 | `start` | number | Yes | `0` | Offset for pagination (0-indexed) |
 | `search` | string | No | `"black"` | Free-text search across activity names |
-| `activityType` | string | No | `"running"`, `"cycling"` | Filter by activity type key (e.g. `"running"`, `"trail_running"`, `"pilates"`) |
+| `activityType` | string | No | `"running"`, `"cycling"` | Filter by **parent** activity type key only (e.g. `"running"`, `"cycling"`). Sub-types like `"trail_running"` or `"pickleball"` are **rejected** with error `"Activity type cannot be an activity sub type"`. To find sub-type activities, use the `search` parameter instead. |
 | `startDate` | string | No | `"2026-01-01"` | Filter start date (YYYY-MM-DD), inclusive |
 | `endDate` | string | No | `"2026-02-13"` | Filter end date (YYYY-MM-DD), inclusive |
 | `excludeChildren` | boolean | No | `false` | Whether to exclude child activities (multi-sport sub-activities) |
@@ -177,7 +177,13 @@ Every activity object contains all fields listed below. Fields marked with **(tr
 }
 ```
 
-Known `typeKey` values in this dataset: `"trail_running"`, `"pilates"`.
+Known `typeKey` values observed: `"trail_running"`, `"pilates"`, `"pickleball"`, `"running"`, `"cycling"`.
+
+**Parent vs Sub-type distinction**: Activity types have a hierarchy. The `parentTypeId` field links sub-types to their parent. For example:
+- `"trail_running"` (typeId 6) → parentTypeId 1 (running)
+- `"pickleball"` (typeId 225) → parentTypeId 219 (racket sports)
+
+The `activityType` query parameter in API 1 only accepts **parent** type keys. Passing a sub-type key returns an error. Use the `search` parameter to find activities by sub-type name.
 
 ### Time
 
