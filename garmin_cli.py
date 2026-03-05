@@ -6,7 +6,7 @@
 """
 Garmin Connect CLI — A command-line tool for accessing Garmin Connect APIs.
 
-This tool wraps 9 Garmin Connect APIs and outputs raw JSON to stdout (or
+This tool wraps 10 Garmin Connect APIs and outputs raw JSON to stdout (or
 downloads binary files for the FIT download command).
 It is designed for programmatic use (piping, scripting, LLM tool-use).
 
@@ -49,6 +49,9 @@ activities detail   — Get full detail for a single activity (API 2: activity-s
 activities download — Download original FIT file for an activity (API 9: download-service)
   --activity-id INT    Garmin activity ID (required)
   --output-dir PATH    Directory to save the FIT file (default: current directory)
+
+activities gear     — Get gear linked to an activity (API 10: gear-service)
+  --activity-id INT    Garmin activity ID (required)
 
 metrics hill-score  — Get daily hill score stats (API 3: metrics-service)
   --start-date DATE   Start date, YYYY-MM-DD (required)
@@ -104,6 +107,9 @@ python garmin_cli.py activities download --activity-id 21942154782
 
 # Download FIT file to a specific directory
 python garmin_cli.py activities download --activity-id 21942154782 --output-dir /tmp
+
+# Get gear linked to an activity (e.g. shoes)
+python garmin_cli.py activities gear --activity-id 21993647638
 
 # Get hill score for a date range
 python garmin_cli.py metrics hill-score --start-date 2026-01-30 --end-date 2026-02-26
@@ -356,6 +362,26 @@ class GarminClient:
             zf.extract(fit_names[0], path=out)
             return str(out / fit_names[0])
 
+    # ── API 10: Activity Gear ────────────────────────────────────────────
+
+    def get_activity_gear(self, activity_id: int) -> list[dict]:
+        """Get gear linked to an activity.
+
+        Endpoint: GET {BASE}/gear-service/activity/v2/{activityId}
+
+        Args:
+            activity_id: Garmin activity ID (numeric).
+
+        Returns:
+            JSON array of gear objects. Each object contains uuid, gearType
+            (e.g. "SHOES"), status, name, brand, usageType, maxUsageDistanceMeters,
+            firstUseDate, numActivitiesLinked, durationUsedSeconds,
+            distanceUsedMeters, daysUsed. Returns empty array if no gear linked.
+        """
+        return self._get(
+            f"{self.base_url}/gear-service/activity/v2/{activity_id}"
+        )
+
     # ── API 3: Hill Score Stats ──────────────────────────────────────────
 
     def get_hill_score(
@@ -560,6 +586,14 @@ def _setup_activities_download(subparser: argparse._SubParsersAction) -> None:
     ))
 
 
+def _setup_activities_gear(subparser: argparse._SubParsersAction) -> None:
+    p = subparser.add_parser("gear", help="Get gear linked to an activity (API 10)")
+    p.add_argument("--activity-id", type=int, required=True, help="Garmin activity ID")
+    p.set_defaults(func=lambda client, args: client.get_activity_gear(
+        activity_id=args.activity_id,
+    ))
+
+
 def _setup_metrics_hill_score(subparser: argparse._SubParsersAction) -> None:
     p = subparser.add_parser("hill-score", help="Get daily hill score stats (API 3)")
     p.add_argument("--start-date", required=True, help="Start date, YYYY-MM-DD")
@@ -642,6 +676,7 @@ def build_parser() -> argparse.ArgumentParser:
     _setup_activities_search(activities_sub)
     _setup_activities_detail(activities_sub)
     _setup_activities_download(activities_sub)
+    _setup_activities_gear(activities_sub)
 
     # metrics
     metrics_parser = subparsers.add_parser("metrics", help="Metrics APIs (hill score, endurance score)")

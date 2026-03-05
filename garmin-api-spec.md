@@ -1,6 +1,6 @@
 # Garmin Connect API Documentation
 
-This document covers nine Garmin Connect APIs (curl commands copied from browser developer tools).
+This document covers ten Garmin Connect APIs (curl commands copied from browser developer tools).
 
 ---
 
@@ -2088,3 +2088,92 @@ with fitdecode.FitReader('{activityId}_ACTIVITY.fit') as fit:
 | Heart rate | Min/max/avg only | Every sample point |
 | Use case | Dashboards, search, analytics | Route mapping, detailed analysis, re-import |
 | Response type | Brotli-compressed JSON | ZIP-compressed FIT file |
+
+---
+
+## API 10: Activity Gear (Linked Equipment)
+
+```bash
+curl 'https://connect.garmin.com/gc-api/gear-service/activity/v2/{activityId}' \
+-X 'GET' \
+-H 'Accept: */*' \
+-H 'Sec-Fetch-Site: same-origin' \
+-H 'Cookie: <cookie>' \
+-H 'Sec-Fetch-Mode: cors' \
+-H 'Accept-Language: en-US,en;q=0.9' \
+-H 'Accept-Encoding: gzip, deflate, br, zstd' \
+-H 'Sec-Fetch-Dest: empty' \
+-H 'Connect-Csrf-Token: <csrf-token>' \
+-H 'Priority: u=3, i'
+```
+
+### Overview
+
+Returns the gear (equipment) linked to a specific activity. This is useful for tracking shoe mileage, bike usage, or other equipment wear. Returns an empty array if no gear is linked to the activity.
+
+### Path Parameters
+
+| Parameter | Type | Example | Notes |
+|-----------|------|---------|-------|
+| `{activityId}` | number | `21993647638` | Activity ID from the activity list (API 1) or activity detail (API 2) |
+
+### Response Format
+
+- **Content-Type**: JSON (Brotli-compressed)
+- **Structure**: JSON array of gear objects (can be empty)
+
+### Response Fields
+
+| Field | Type | Example | Notes |
+|-------|------|---------|-------|
+| `uuid` | string | `"2bd79826-731a-4010-a9d9-bcd5fc28e29a"` | Unique gear identifier |
+| `userProfilePk` | number | `90568238` | User profile ID |
+| `gearType` | string | `"SHOES"` | Gear category. Known values: `"SHOES"` |
+| `status` | string | `"ACTIVE"` | Gear status. Known values: `"ACTIVE"` |
+| `name` | string | `""` | User-assigned gear name (can be empty) |
+| `brand` | string | `"Brooks Hyperion 2"` | Gear brand and model |
+| `usageType` | string | `"DISTANCE"` | How usage is tracked. Known values: `"DISTANCE"` |
+| `maxUsageDistanceMeters` | number | `900000.0` | Max usage distance in meters before retirement (e.g. 900 km) |
+| `firstUseDate` | string | `"2024-08-27"` | Date gear was first used (YYYY-MM-DD) |
+| `numActivitiesLinked` | number | `107` | Total number of activities this gear is linked to |
+| `durationUsedSeconds` | number | `320172` | Total duration of all linked activities in seconds |
+| `distanceUsedMeters` | number | `887900.32` | Total distance across all linked activities in meters |
+| `daysUsed` | number | `91` | Number of distinct days the gear was used |
+| `processing` | boolean | `false` | Whether gear stats are currently being recalculated |
+
+### Example Response
+
+**Activity with linked gear (running shoes):**
+
+```json
+[
+  {
+    "uuid": "2bd79826-731a-4010-a9d9-bcd5fc28e29a",
+    "userProfilePk": 90568238,
+    "gearType": "SHOES",
+    "status": "ACTIVE",
+    "name": "",
+    "brand": "Brooks Hyperion 2",
+    "usageType": "DISTANCE",
+    "maxUsageDistanceMeters": 900000.0,
+    "firstUseDate": "2024-08-27",
+    "numActivitiesLinked": 107,
+    "durationUsedSeconds": 320172,
+    "distanceUsedMeters": 887900.3172607422,
+    "daysUsed": 91,
+    "processing": false
+  }
+]
+```
+
+**Activity with no linked gear:**
+
+```json
+[]
+```
+
+### Notes
+
+- An activity can have multiple gear items linked (e.g. shoes + watch strap), so the response is always an array.
+- The `distanceUsedMeters` and `maxUsageDistanceMeters` fields are useful for tracking gear wear — compare them to see remaining life (e.g. 887.9 km used out of 900 km max).
+- Gear is typically linked to activities via Garmin Connect settings (auto-link by activity type or manual assignment).

@@ -1,5 +1,12 @@
 # Garmin Data Project
 
+## Python executable
+When need to run `python` at any time, follow the steps below:
+1. check if `venv` directory presents in the workspace, if yes, run `source venv/bin/activate`, then use `python` directly
+2. if `venv` directory doesn't exist, follow the instructions in README.md to create a venv and install dependencies, then try step 1 again
+3. if `venv` directory exist, but step 1 still fails in the end, remove `venv` directory and then follow the instructions in README.md to create a venv and install dependencies, then try step 1 again
+4. if step 1/2/3 all don't work, find another way to find a usable Python executable.
+
 ## Garmin Connect CLI
 
 To access Garmin Connect data, use the CLI at `garmin_cli.py`. Run with `python garmin_cli.py` (using the venv described in README.md). If needed to install dependencies, follow the instructions in README.md.
@@ -50,6 +57,16 @@ python garmin_cli.py activities download --activity-id 22048373565 --output-dir 
 The FIT file is saved as `{activityId}_ACTIVITY.fit`. To get the activity ID, use `python garmin_cli.py activities search` first and read the `activityId` field from the results.
 
 To parse the FIT file, use `fitdecode` (`pip install fitdecode`). See API 9 in `garmin-api-spec.md` for details on the FIT format and what data it contains (GPS trackpoints, per-second HR/cadence/power, laps, etc.).
+
+### Activity Gear
+
+To get gear (shoes, bike, etc.) linked to an activity (API 10: gear-service):
+
+```bash
+python garmin_cli.py activities gear --activity-id 21993647638
+```
+
+Returns an array of gear objects with brand, usage stats (distance, duration, days used), and retirement threshold (`maxUsageDistanceMeters`). Returns an empty array if no gear is linked. Useful for tracking shoe mileage or equipment wear.
 
 ## API Spec
 
