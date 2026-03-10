@@ -72,6 +72,15 @@ sleep detail        — Get full single-night sleep data with time-series (API 6
   --date DATE          Wake-up date, YYYY-MM-DD (required)
   --non-sleep-buffer INT  Minutes of pre/post-sleep data to include (default: 60)
 
+wellness daily-summary — Get daily wellness summary (garth: usersummary-service)
+  --date DATE          Date, YYYY-MM-DD (required)
+                       Returns steps, calories, HR, stress, body battery, SpO2, floors,
+                       intensity minutes, respiration — all in one call.
+
+wellness heart-rate   — Get daily heart rate time-series (garth: wellness-service)
+  --date DATE          Date, YYYY-MM-DD (required)
+                       Returns heartRateValues array: [[timestamp_ms, hr_value], ...]
+
 wellness stress-weekly — Get weekly stress aggregates (garth: usersummary-service)
   --end-date DATE      End date, YYYY-MM-DD (required)
   --num-weeks INT      Number of weeks to retrieve, auto-paginates beyond 52 (required)
@@ -151,6 +160,12 @@ python garmin_cli.py calendar month --year 2026 --month 1
 
 # Get a note's full content
 python garmin_cli.py calendar note --note-id 126088664
+
+# Get daily wellness summary (steps, calories, HR, stress, body battery, SpO2, etc.)
+python garmin_cli.py wellness daily-summary --date 2026-03-09
+
+# Get heart rate time-series for a day
+python garmin_cli.py wellness heart-rate --date 2026-03-09
 
 # Get weekly stress averages for the last 12 weeks
 python garmin_cli.py wellness stress-weekly --end-date 2026-03-09 --num-weeks 12
@@ -583,6 +598,53 @@ class GarminClient:
             f"{self.base_url}/calendar-service/note/{note_id}"
         )
 
+    # ── Wellness: Daily Summary (garth: usersummary-service) ─────────────
+
+    def get_summary_daily(self, date: str) -> dict:
+        """Get daily wellness summary (steps, calories, HR, stress, body battery, SpO2, floors).
+
+        Endpoint: GET {BASE}/usersummary-service/usersummary/daily/?calendarDate={date}
+
+        Args:
+            date: Date, YYYY-MM-DD.
+
+        Returns:
+            JSON object with totalSteps, totalDistanceMeters, totalKilocalories,
+            activeKilocalories, restingHeartRate, minHeartRate, maxHeartRate,
+            lastSevenDaysAvgRestingHeartRate, averageStressLevel, maxStressLevel,
+            stressQualifier, bodyBatteryAtWakeTime, bodyBatteryHighestValue,
+            bodyBatteryLowestValue, moderateIntensityMinutes, vigorousIntensityMinutes,
+            floorsAscended, floorsDescended, averageSpo2, lowestSpo2,
+            avgWakingRespirationValue, highestRespirationValue, lowestRespirationValue,
+            activeSeconds, highlyActiveSeconds, sedentarySeconds, sleepingSeconds.
+        """
+        return self._get(
+            f"{self.base_url}/usersummary-service/usersummary/daily/",
+            params={"calendarDate": date},
+        )
+
+    # ── Wellness: Daily Heart Rate (garth: wellness-service) ─────────────
+
+    def get_heart_rate_daily(self, date: str) -> dict:
+        """Get daily heart rate time-series.
+
+        Endpoint: GET {BASE}/wellness-service/wellness/dailyHeartRate/?date={date}
+
+        Args:
+            date: Date, YYYY-MM-DD.
+
+        Returns:
+            JSON object with calendarDate, startTimestampGMT, endTimestampGMT,
+            startTimestampLocal, endTimestampLocal, maxHeartRate, minHeartRate,
+            restingHeartRate, lastSevenDaysAvgRestingHeartRate, and
+            heartRateValues array: [[timestamp_ms, hr_value], ...]
+            (null hr_value = no reading at that timestamp).
+        """
+        return self._get(
+            f"{self.base_url}/wellness-service/wellness/dailyHeartRate/",
+            params={"date": date},
+        )
+
     # ── Wellness: Weekly Stress (garth: usersummary-service) ─────────────
 
     def get_stress_weekly(self, end_date: str, num_weeks: int) -> list[dict]:
@@ -842,6 +904,22 @@ def _setup_calendar_month(subparser: argparse._SubParsersAction) -> None:
     ))
 
 
+def _setup_wellness_daily_summary(subparser: argparse._SubParsersAction) -> None:
+    p = subparser.add_parser("daily-summary", help="Get daily wellness summary (garth: usersummary-service)")
+    p.add_argument("--date", required=True, help="Date, YYYY-MM-DD")
+    p.set_defaults(func=lambda client, args: client.get_summary_daily(
+        date=args.date,
+    ))
+
+
+def _setup_wellness_heart_rate(subparser: argparse._SubParsersAction) -> None:
+    p = subparser.add_parser("heart-rate", help="Get daily heart rate time-series (garth: wellness-service)")
+    p.add_argument("--date", required=True, help="Date, YYYY-MM-DD")
+    p.set_defaults(func=lambda client, args: client.get_heart_rate_daily(
+        date=args.date,
+    ))
+
+
 def _setup_wellness_stress_weekly(subparser: argparse._SubParsersAction) -> None:
     p = subparser.add_parser("stress-weekly", help="Get weekly stress aggregates (garth: usersummary-service)")
     p.add_argument("--end-date", required=True, help="End date, YYYY-MM-DD")
@@ -939,8 +1017,10 @@ def build_parser() -> argparse.ArgumentParser:
     _setup_sleep_detail(sleep_sub)
 
     # wellness
-    wellness_parser = subparsers.add_parser("wellness", help="Wellness APIs (stress, body battery, etc.)")
+    wellness_parser = subparsers.add_parser("wellness", help="Wellness APIs (daily summary, heart rate, stress, HRV, weight, training)")
     wellness_sub = wellness_parser.add_subparsers(dest="subcommand", help="Wellness subcommand")
+    _setup_wellness_daily_summary(wellness_sub)
+    _setup_wellness_heart_rate(wellness_sub)
     _setup_wellness_stress_weekly(wellness_sub)
     _setup_wellness_stress_daily(wellness_sub)
     _setup_wellness_hrv(wellness_sub)

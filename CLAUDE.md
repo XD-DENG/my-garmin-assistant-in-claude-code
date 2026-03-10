@@ -73,6 +73,12 @@ Returns an array of gear objects with brand, usage stats (distance, duration, da
 Wellness commands use endpoints from `garmin-api-from-garth.md` (not the numbered APIs in `garmin-api-spec.md`).
 
 ```bash
+# Daily wellness summary (steps, calories, HR, stress, body battery, SpO2, floors)
+python garmin_cli.py wellness daily-summary --date 2026-03-09
+
+# Heart rate time-series [[timestamp_ms, hr_value], ...]
+python garmin_cli.py wellness heart-rate --date 2026-03-09
+
 # Weekly stress averages (auto-paginates beyond 52 weeks)
 python garmin_cli.py wellness stress-weekly --end-date 2026-03-09 --num-weeks 12
 
@@ -96,6 +102,6 @@ python garmin_cli.py wellness training-status --date 2026-03-09
 
 Full API documentation is in `garmin-api-spec.md`. Reference this when adding new endpoints to the CLI.
 
-Several wellness endpoints (HRV, stress, weight, training readiness/status) are already available via `wellness` subcommands — see the "Wellness Data" section above.
+Several wellness endpoints (daily summary, heart rate, HRV, stress, weight, training readiness/status) are already available via `wellness` subcommands — see the "Wellness Data" section above.
 
-If the user requests data not yet in the CLI (e.g. heart rate time-series, body battery, steps, hydration, intensity minutes, user profile/settings), check `garmin-api-from-garth.md` for additional endpoints. These were extracted from the [garth](https://github.com/matin/garth) Python package and cover many wellness/health APIs that the primary spec does not.
+If the user requests data not yet in the CLI (e.g. body battery/stress intraday time-series, steps aggregates, hydration, intensity minutes, user profile/settings), check `garmin-api-from-garth.md` for additional endpoints. Note: `daily-summary` includes body battery summary values (at wake, highest, lowest) but not the full intraday time-series. These were extracted from the [garth](https://github.com/matin/garth) Python package and cover many wellness/health APIs that the primary spec does not.
