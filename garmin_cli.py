@@ -6,9 +6,10 @@
 """
 Garmin Connect CLI — A command-line tool for accessing Garmin Connect APIs.
 
-This tool wraps 10 Garmin Connect APIs and outputs raw JSON to stdout (or
-downloads binary files for the FIT download command).
-It is designed for programmatic use (piping, scripting, LLM tool-use).
+This tool wraps 10 Garmin Connect APIs plus supplementary garth endpoints,
+and outputs raw JSON to stdout (or downloads binary files for the FIT
+download command). It is designed for programmatic use (piping, scripting,
+LLM tool-use).
 
 ================================================================================
 AUTHENTICATION
@@ -71,6 +72,28 @@ sleep detail        — Get full single-night sleep data with time-series (API 6
   --date DATE          Wake-up date, YYYY-MM-DD (required)
   --non-sleep-buffer INT  Minutes of pre/post-sleep data to include (default: 60)
 
+wellness stress-weekly — Get weekly stress aggregates (garth: usersummary-service)
+  --end-date DATE      End date, YYYY-MM-DD (required)
+  --num-weeks INT      Number of weeks to retrieve, auto-paginates beyond 52 (required)
+
+wellness stress-daily — Get daily stress aggregates (garth: usersummary-service)
+  --start-date DATE    Start date, YYYY-MM-DD (required)
+  --end-date DATE      End date, YYYY-MM-DD (required)
+                       Auto-paginates beyond the 28-day API limit.
+
+wellness hrv          — Get nightly HRV readings and baseline (garth: hrv-service)
+  --date DATE          Date, YYYY-MM-DD (required)
+
+wellness weight       — Get weight entries for a date range (garth: weight-service)
+  --start-date DATE    Start date, YYYY-MM-DD (required)
+  --end-date DATE      End date, YYYY-MM-DD (required)
+
+wellness training-readiness — Get training readiness score (garth: metrics-service)
+  --date DATE          Date, YYYY-MM-DD (required)
+
+wellness training-status — Get training status and load (garth: mobile-gateway)
+  --date DATE          Date, YYYY-MM-DD (required)
+
 calendar month      — Get monthly calendar with all item types (API 7: calendar-service)
   --year INT           Calendar year (required)
   --month INT          Calendar month, 1-indexed: 1=Jan, 12=Dec (required)
@@ -128,6 +151,24 @@ python garmin_cli.py calendar month --year 2026 --month 1
 
 # Get a note's full content
 python garmin_cli.py calendar note --note-id 126088664
+
+# Get weekly stress averages for the last 12 weeks
+python garmin_cli.py wellness stress-weekly --end-date 2026-03-09 --num-weeks 12
+
+# Get daily stress breakdown for a week
+python garmin_cli.py wellness stress-daily --start-date 2026-03-03 --end-date 2026-03-09
+
+# Get nightly HRV readings and baseline
+python garmin_cli.py wellness hrv --date 2026-03-09
+
+# Get weight entries for a month
+python garmin_cli.py wellness weight --start-date 2026-02-09 --end-date 2026-03-09
+
+# Get training readiness score for today
+python garmin_cli.py wellness training-readiness --date 2026-03-09
+
+# Get training status (load, VO2 trend, ACWR)
+python garmin_cli.py wellness training-status --date 2026-03-09
 
 # Save output to a file (--output is a global flag, must come before subcommand)
 python garmin_cli.py --output activities.json activities search --limit 5 --start 0
@@ -542,6 +583,159 @@ class GarminClient:
             f"{self.base_url}/calendar-service/note/{note_id}"
         )
 
+    # ── Wellness: Weekly Stress (garth: usersummary-service) ─────────────
+
+    def get_stress_weekly(self, end_date: str, num_weeks: int) -> list[dict]:
+        """Get weekly stress aggregates for a date range.
+
+        Endpoint: GET {BASE}/usersummary-service/stats/stress/weekly/{endDate}/{numWeeks}
+
+        Args:
+            end_date: End date, YYYY-MM-DD.
+            num_weeks: Number of weeks to retrieve (max 52 per request;
+                this method automatically paginates if num_weeks > 52).
+
+        Returns:
+            JSON array of weekly entries: [{ calendarDate, value }, ...]
+            sorted ascending by date. value is weekly avg stress (0-100).
+        """
+        from datetime import date, timedelta
+
+        results: list[dict] = []
+        end = date.fromisoformat(end_date)
+        remaining = num_weeks
+
+        while remaining > 0:
+            batch = min(remaining, 52)
+            url = f"{self.base_url}/usersummary-service/stats/stress/weekly/{end.isoformat()}/{batch}"
+            batch_data = self._get(url)
+            if batch_data:
+                results = batch_data + results  # prepend (older data first)
+            # Move end date back by batch weeks
+            end = end - timedelta(weeks=batch)
+            remaining -= batch
+
+        return results
+
+    # ── Wellness: Daily Stress (garth: usersummary-service) ──────────────
+
+    def get_stress_daily(self, start_date: str, end_date: str) -> list[dict]:
+        """Get daily stress aggregates for a date range.
+
+        Endpoint: GET {BASE}/usersummary-service/stats/stress/daily/{startDate}/{endDate}
+
+        Args:
+            start_date: Start date, YYYY-MM-DD.
+            end_date: End date, YYYY-MM-DD.
+                Max 28 days per request; this method automatically paginates
+                for longer ranges.
+
+        Returns:
+            JSON array of daily entries sorted ascending by date. Each entry:
+            { calendarDate, overallStressLevel, restStressDuration,
+              lowStressDuration, mediumStressDuration, highStressDuration }
+            (durations in seconds, stress 0-100).
+        """
+        from datetime import date, timedelta
+
+        results: list[dict] = []
+        start = date.fromisoformat(start_date)
+        end = date.fromisoformat(end_date)
+
+        while start <= end:
+            batch_end = min(start + timedelta(days=27), end)
+            url = f"{self.base_url}/usersummary-service/stats/stress/daily/{start.isoformat()}/{batch_end.isoformat()}"
+            batch_data = self._get(url)
+            if batch_data:
+                results.extend(batch_data)
+            start = batch_end + timedelta(days=1)
+
+        return results
+
+    # ── Wellness: HRV Detail (garth: hrv-service) ────────────────────────
+
+    def get_hrv(self, date: str) -> dict:
+        """Get nightly HRV readings and baseline for a single date.
+
+        Endpoint: GET {BASE}/hrv-service/hrv/{date}
+
+        Args:
+            date: Date, YYYY-MM-DD.
+
+        Returns:
+            JSON object with hrvSummary (calendarDate, weeklyAvg, lastNightAvg,
+            lastNight5MinHigh, status e.g. "BALANCED", baseline ranges),
+            hrvReadings array [{hrvValue, readingTimeGMT, readingTimeLocal}, ...],
+            and sleep window timestamps.
+        """
+        return self._get(f"{self.base_url}/hrv-service/hrv/{date}")
+
+    # ── Wellness: Weight Range (garth: weight-service) ───────────────────
+
+    def get_weight(self, start_date: str, end_date: str) -> dict:
+        """Get weight entries for a date range.
+
+        Endpoint: GET {BASE}/weight-service/weight/range/{startDate}/{endDate}
+
+        Args:
+            start_date: Start date, YYYY-MM-DD.
+            end_date: End date, YYYY-MM-DD.
+
+        Returns:
+            JSON object with dailyWeightSummaries array. Each summary contains
+            allWeightMetrics array with entries: weight (grams), bmi, bodyFat %,
+            bodyWater %, boneMass (grams), muscleMass (grams), metabolicAge,
+            visceralFat, sourceType, timestampGMT.
+        """
+        return self._get(
+            f"{self.base_url}/weight-service/weight/range/{start_date}/{end_date}",
+            params={"includeAll": "true"},
+        )
+
+    # ── Wellness: Training Readiness (garth: metrics-service) ────────────
+
+    def get_training_readiness(self, date: str) -> list[dict]:
+        """Get training readiness score and component breakdown for a date.
+
+        Endpoint: GET {BASE}/metrics-service/metrics/trainingreadiness/{date}
+
+        Args:
+            date: Date, YYYY-MM-DD.
+
+        Returns:
+            JSON array (multiple contexts, e.g. AFTER_WAKEUP_RESET, CURRENT).
+            Each entry: score (0-100), level (e.g. "PRIME", "HIGH"),
+            feedbackShort/feedbackLong, component scores and percentages
+            (sleepScore, recoveryTime, acuteLoad, hrvWeeklyAverage,
+            stressHistoryFactorPercent, sleepHistoryFactorPercent).
+            Filter for inputContext == "AFTER_WAKEUP_RESET" for morning readiness.
+        """
+        return self._get(
+            f"{self.base_url}/metrics-service/metrics/trainingreadiness/{date}"
+        )
+
+    # ── Wellness: Training Status (garth: mobile-gateway) ────────────────
+
+    def get_training_status(self, date: str) -> dict:
+        """Get training status (load, VO2 trend, ACWR) for a date.
+
+        Endpoint: GET {BASE}/mobile-gateway/usersummary/trainingstatus/latest/{date}
+
+        Args:
+            date: Date, YYYY-MM-DD.
+
+        Returns:
+            JSON object (deeply nested). Key data is under
+            mostRecentTrainingStatus.payload.latestTrainingStatusData.{deviceId}:
+            weeklyTrainingLoad, trainingStatus, trainingStatusFeedbackPhrase
+            (e.g. "Productive"), loadTunnelMin/Max, fitnessTrend (VO2 max trend),
+            acwrPercent, acwrStatus (e.g. "OPTIMAL"), dailyTrainingLoadAcute,
+            dailyTrainingLoadChronic, dailyAcuteChronicWorkloadRatio.
+        """
+        return self._get(
+            f"{self.base_url}/mobile-gateway/usersummary/trainingstatus/latest/{date}"
+        )
+
 
 # ── CLI Setup ────────────────────────────────────────────────────────────
 
@@ -648,6 +842,60 @@ def _setup_calendar_month(subparser: argparse._SubParsersAction) -> None:
     ))
 
 
+def _setup_wellness_stress_weekly(subparser: argparse._SubParsersAction) -> None:
+    p = subparser.add_parser("stress-weekly", help="Get weekly stress aggregates (garth: usersummary-service)")
+    p.add_argument("--end-date", required=True, help="End date, YYYY-MM-DD")
+    p.add_argument("--num-weeks", type=int, required=True, help="Number of weeks to retrieve (auto-paginates beyond 52)")
+    p.set_defaults(func=lambda client, args: client.get_stress_weekly(
+        end_date=args.end_date,
+        num_weeks=args.num_weeks,
+    ))
+
+
+def _setup_wellness_stress_daily(subparser: argparse._SubParsersAction) -> None:
+    p = subparser.add_parser("stress-daily", help="Get daily stress aggregates (garth: usersummary-service)")
+    p.add_argument("--start-date", required=True, help="Start date, YYYY-MM-DD")
+    p.add_argument("--end-date", required=True, help="End date, YYYY-MM-DD")
+    p.set_defaults(func=lambda client, args: client.get_stress_daily(
+        start_date=args.start_date,
+        end_date=args.end_date,
+    ))
+
+
+def _setup_wellness_hrv(subparser: argparse._SubParsersAction) -> None:
+    p = subparser.add_parser("hrv", help="Get nightly HRV readings and baseline (garth: hrv-service)")
+    p.add_argument("--date", required=True, help="Date, YYYY-MM-DD")
+    p.set_defaults(func=lambda client, args: client.get_hrv(
+        date=args.date,
+    ))
+
+
+def _setup_wellness_weight(subparser: argparse._SubParsersAction) -> None:
+    p = subparser.add_parser("weight", help="Get weight entries for a date range (garth: weight-service)")
+    p.add_argument("--start-date", required=True, help="Start date, YYYY-MM-DD")
+    p.add_argument("--end-date", required=True, help="End date, YYYY-MM-DD")
+    p.set_defaults(func=lambda client, args: client.get_weight(
+        start_date=args.start_date,
+        end_date=args.end_date,
+    ))
+
+
+def _setup_wellness_training_readiness(subparser: argparse._SubParsersAction) -> None:
+    p = subparser.add_parser("training-readiness", help="Get training readiness score (garth: metrics-service)")
+    p.add_argument("--date", required=True, help="Date, YYYY-MM-DD")
+    p.set_defaults(func=lambda client, args: client.get_training_readiness(
+        date=args.date,
+    ))
+
+
+def _setup_wellness_training_status(subparser: argparse._SubParsersAction) -> None:
+    p = subparser.add_parser("training-status", help="Get training status and load (garth: mobile-gateway)")
+    p.add_argument("--date", required=True, help="Date, YYYY-MM-DD")
+    p.set_defaults(func=lambda client, args: client.get_training_status(
+        date=args.date,
+    ))
+
+
 def _setup_calendar_note(subparser: argparse._SubParsersAction) -> None:
     p = subparser.add_parser("note", help="Get full content of a calendar note (API 8)")
     p.add_argument("--note-id", type=int, required=True, help="Note ID from calendar item")
@@ -689,6 +937,16 @@ def build_parser() -> argparse.ArgumentParser:
     sleep_sub = sleep_parser.add_subparsers(dest="subcommand", help="Sleep subcommand")
     _setup_sleep_stats(sleep_sub)
     _setup_sleep_detail(sleep_sub)
+
+    # wellness
+    wellness_parser = subparsers.add_parser("wellness", help="Wellness APIs (stress, body battery, etc.)")
+    wellness_sub = wellness_parser.add_subparsers(dest="subcommand", help="Wellness subcommand")
+    _setup_wellness_stress_weekly(wellness_sub)
+    _setup_wellness_stress_daily(wellness_sub)
+    _setup_wellness_hrv(wellness_sub)
+    _setup_wellness_weight(wellness_sub)
+    _setup_wellness_training_readiness(wellness_sub)
+    _setup_wellness_training_status(wellness_sub)
 
     # calendar
     calendar_parser = subparsers.add_parser("calendar", help="Calendar APIs")

@@ -68,8 +68,34 @@ python garmin_cli.py activities gear --activity-id 21993647638
 
 Returns an array of gear objects with brand, usage stats (distance, duration, days used), and retirement threshold (`maxUsageDistanceMeters`). Returns an empty array if no gear is linked. Useful for tracking shoe mileage or equipment wear.
 
+### Wellness Data
+
+Wellness commands use endpoints from `garmin-api-from-garth.md` (not the numbered APIs in `garmin-api-spec.md`).
+
+```bash
+# Weekly stress averages (auto-paginates beyond 52 weeks)
+python garmin_cli.py wellness stress-weekly --end-date 2026-03-09 --num-weeks 12
+
+# Daily stress breakdown (auto-paginates beyond 28 days)
+python garmin_cli.py wellness stress-daily --start-date 2026-03-03 --end-date 2026-03-09
+
+# Nightly HRV readings + baseline status
+python garmin_cli.py wellness hrv --date 2026-03-09
+
+# Weight entries (weight, BMI, body fat, muscle mass, etc.)
+python garmin_cli.py wellness weight --start-date 2026-02-09 --end-date 2026-03-09
+
+# Training readiness score with component breakdown
+python garmin_cli.py wellness training-readiness --date 2026-03-09
+
+# Training status (weekly load, VO2 trend, ACWR)
+python garmin_cli.py wellness training-status --date 2026-03-09
+```
+
 ## API Spec
 
 Full API documentation is in `garmin-api-spec.md`. Reference this when adding new endpoints to the CLI.
 
-If the user requests data not covered by `garmin-api-spec.md` (e.g. heart rate time-series, HRV, stress, body battery, steps, weight, hydration, intensity minutes, training readiness/status, user profile/settings), check `garmin-api-from-garth.md` for additional endpoints. These were extracted from the [garth](https://github.com/matin/garth) Python package and cover many wellness/health APIs that the primary spec does not.
+Several wellness endpoints (HRV, stress, weight, training readiness/status) are already available via `wellness` subcommands — see the "Wellness Data" section above.
+
+If the user requests data not yet in the CLI (e.g. heart rate time-series, body battery, steps, hydration, intensity minutes, user profile/settings), check `garmin-api-from-garth.md` for additional endpoints. These were extracted from the [garth](https://github.com/matin/garth) Python package and cover many wellness/health APIs that the primary spec does not.
