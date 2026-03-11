@@ -6,7 +6,7 @@
 """
 Garmin Connect CLI — A command-line tool for accessing Garmin Connect APIs.
 
-This tool wraps 10 Garmin Connect APIs plus supplementary garth endpoints,
+This tool wraps 11 Garmin Connect APIs plus supplementary garth endpoints,
 and outputs raw JSON to stdout (or downloads binary files for the FIT
 download command). It is designed for programmatic use (piping, scripting,
 LLM tool-use).
@@ -53,6 +53,12 @@ activities download — Download original FIT file for an activity (API 9: downl
 
 activities gear     — Get gear linked to an activity (API 10: gear-service)
   --activity-id INT    Garmin activity ID (required)
+
+gear list          — List all user gear (gear-service)
+  --status TEXT        Filter: ACTIVE (default), RETIRED, or ALL
+  --gear-type TEXT     Filter by gear type (e.g. "SHOES")
+  --start INT          Pagination offset (default: 0)
+  --limit INT          Max results (default: 50)
 
 metrics hill-score  — Get daily hill score stats (API 3: metrics-service)
   --start-date DATE   Start date, YYYY-MM-DD (required)
@@ -436,6 +442,46 @@ class GarminClient:
         """
         return self._get(
             f"{self.base_url}/gear-service/activity/v2/{activity_id}"
+        )
+
+    # ── Gear List ────────────────────────────────────────────────────────
+
+    def get_gear_list(
+        self,
+        gear_status: str = "ACTIVE",
+        gear_type: str | None = None,
+        start: int = 0,
+        limit: int = 50,
+        sort_order: str = "firstUseDate_desc",
+    ) -> list[dict]:
+        """List all user gear, optionally filtered by status and type.
+
+        Endpoint: GET {BASE}/gear-service/gear/v2/list
+
+        Args:
+            gear_status: Filter by status: "ACTIVE", "RETIRED", or "ALL".
+            gear_type: Filter by gear type (e.g. "SHOES"). None = all types.
+            start: Pagination offset (default 0).
+            limit: Max results (default 50).
+            sort_order: Sort order (default "firstUseDate_desc").
+
+        Returns:
+            JSON array of gear objects with uuid, gearType, status, name,
+            brand, distanceUsedMeters, maxUsageDistanceMeters, firstUseDate,
+            numActivitiesLinked, daysUsed, etc.
+        """
+        params: dict[str, str | int] = {
+            "start": start,
+            "limit": limit,
+            "sortOrder": sort_order,
+        }
+        if gear_status != "ALL":
+            params["gearStatuses"] = gear_status
+        if gear_type:
+            params["gearType"] = gear_type
+        return self._get(
+            f"{self.base_url}/gear-service/gear/v2/list",
+            params=params,
         )
 
     # ── API 3: Hill Score Stats ──────────────────────────────────────────
@@ -850,6 +896,21 @@ def _setup_activities_gear(subparser: argparse._SubParsersAction) -> None:
     ))
 
 
+def _setup_gear_list(subparser: argparse._SubParsersAction) -> None:
+    p = subparser.add_parser("list", help="List all user gear (gear-service)")
+    p.add_argument("--status", default="ACTIVE", choices=["ACTIVE", "RETIRED", "ALL"],
+                   help='Gear status filter (default: ACTIVE)')
+    p.add_argument("--gear-type", default=None, help='Gear type filter (e.g. "SHOES")')
+    p.add_argument("--start", type=int, default=0, help="Pagination offset (default: 0)")
+    p.add_argument("--limit", type=int, default=50, help="Max results (default: 50)")
+    p.set_defaults(func=lambda client, args: client.get_gear_list(
+        gear_status=args.status,
+        gear_type=args.gear_type,
+        start=args.start,
+        limit=args.limit,
+    ))
+
+
 def _setup_metrics_hill_score(subparser: argparse._SubParsersAction) -> None:
     p = subparser.add_parser("hill-score", help="Get daily hill score stats (API 3)")
     p.add_argument("--start-date", required=True, help="Start date, YYYY-MM-DD")
@@ -1003,6 +1064,11 @@ def build_parser() -> argparse.ArgumentParser:
     _setup_activities_detail(activities_sub)
     _setup_activities_download(activities_sub)
     _setup_activities_gear(activities_sub)
+
+    # gear
+    gear_parser = subparsers.add_parser("gear", help="Gear APIs (list all gear)")
+    gear_sub = gear_parser.add_subparsers(dest="subcommand", help="Gear subcommand")
+    _setup_gear_list(gear_sub)
 
     # metrics
     metrics_parser = subparsers.add_parser("metrics", help="Metrics APIs (hill score, endurance score)")

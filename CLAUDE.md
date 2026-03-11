@@ -58,15 +58,25 @@ The FIT file is saved as `{activityId}_ACTIVITY.fit`. To get the activity ID, us
 
 To parse the FIT file, use `fitdecode` (`pip install fitdecode`). See API 9 in `garmin-api-spec.md` for details on the FIT format and what data it contains (GPS trackpoints, per-second HR/cadence/power, laps, etc.).
 
-### Activity Gear
-
-To get gear (shoes, bike, etc.) linked to an activity (API 10: gear-service):
+### Gear
 
 ```bash
+# List all active shoes
+python garmin_cli.py gear list --gear-type SHOES
+
+# List retired shoes
+python garmin_cli.py gear list --gear-type SHOES --status RETIRED
+
+# List all gear (any type, any status)
+python garmin_cli.py gear list --status ALL
+
+# Get gear linked to a specific activity (API 10)
 python garmin_cli.py activities gear --activity-id 21993647638
 ```
 
-Returns an array of gear objects with brand, usage stats (distance, duration, days used), and retirement threshold (`maxUsageDistanceMeters`). Returns an empty array if no gear is linked. Useful for tracking shoe mileage or equipment wear.
+`gear list` returns gear objects with brand, usage stats (distance, duration, days used), retirement threshold (`maxUsageDistanceMeters`), and retire date (for retired gear). Use `--status` to filter by ACTIVE (default), RETIRED, or ALL. Use `--gear-type` to filter by type (e.g. "SHOES").
+
+`activities gear` returns gear linked to a specific activity. Returns an empty array if no gear is linked.
 
 ### Wellness Data
 

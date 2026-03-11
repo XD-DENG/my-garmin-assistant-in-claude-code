@@ -2091,6 +2091,87 @@ with fitdecode.FitReader('{activityId}_ACTIVITY.fit') as fit:
 
 ---
 
+## API 11: Gear List (All User Gear)
+
+```bash
+curl 'https://connect.garmin.com/gc-api/gear-service/gear/v2/list?start=0&limit=20&gearStatuses=ACTIVE&sortOrder=firstUseDate_desc&gearType=SHOES' \
+-X 'GET' \
+-H 'Accept: */*' \
+-H 'Cookie: <cookie>' \
+-H 'Connect-Csrf-Token: <csrf-token>'
+```
+
+### Overview
+
+Lists all user gear, optionally filtered by status and type. Unlike API 10 (which returns gear for a single activity), this endpoint returns all gear the user has registered in Garmin Connect.
+
+### Query Parameters
+
+| Parameter | Type | Example | Notes |
+|-----------|------|---------|-------|
+| `start` | number | `0` | Pagination offset (0-indexed) |
+| `limit` | number | `20` | Max results to return |
+| `gearStatuses` | string | `ACTIVE` | Filter by status: `ACTIVE`, `RETIRED`. Omit to get all. |
+| `sortOrder` | string | `firstUseDate_desc` | Sort order (default: `firstUseDate_desc`) |
+| `gearType` | string | `SHOES` | Filter by gear type. Known values: `SHOES`. Omit to get all types. |
+
+### Response Format
+
+- **Content-Type**: JSON (Brotli-compressed)
+- **Structure**: JSON array of gear objects
+
+### Response Fields
+
+| Field | Type | Example | Notes |
+|-------|------|---------|-------|
+| `uuid` | string | `"2bd79826-..."` | Unique gear identifier |
+| `userProfilePk` | number | `90568238` | User profile ID |
+| `gearType` | string | `"SHOES"` | Gear category |
+| `status` | string | `"ACTIVE"` | `"ACTIVE"` or `"RETIRED"` |
+| `name` | string | `"NN 蓝"` | User-assigned gear name (can be empty) |
+| `brand` | string | `"Brooks Hyperion 2"` | Gear brand and model |
+| `usageType` | string | `"DISTANCE"` | How usage is tracked |
+| `maxUsageDistanceMeters` | number | `900000.0` | Max distance before retirement (meters) |
+| `firstUseDate` | string | `"2024-08-27"` | Date gear was first used (YYYY-MM-DD) |
+| `numActivitiesLinked` | number | `110` | Total linked activities |
+| `durationUsedSeconds` | number | `322196` | Total duration (seconds) |
+| `distanceUsedMeters` | number | `893594.48` | Total distance (meters) |
+| `daysUsed` | number | `92` | Distinct days used |
+| `processing` | boolean | `false` | Whether stats are being recalculated |
+| `createdDate` | string | `"2024-08-27T17:57:02.0"` | When gear was added to Garmin Connect |
+| `retireDate` | string | `"2025-11-16"` | When gear was retired (only present for RETIRED gear) |
+
+### Example Response
+
+```json
+[
+  {
+    "uuid": "2bd79826-731a-4010-a9d9-bcd5fc28e29a",
+    "userProfilePk": 90568238,
+    "gearType": "SHOES",
+    "status": "ACTIVE",
+    "brand": "Brooks Hyperion 2",
+    "usageType": "DISTANCE",
+    "maxUsageDistanceMeters": 900000.0,
+    "firstUseDate": "2024-08-27",
+    "numActivitiesLinked": 110,
+    "durationUsedSeconds": 322196,
+    "distanceUsedMeters": 893594.4772949219,
+    "daysUsed": 92,
+    "processing": false,
+    "createdDate": "2024-08-27T17:57:02.0"
+  }
+]
+```
+
+### Notes
+
+- Use this to get all gear at once instead of querying per-activity with API 10.
+- Retired gear includes a `retireDate` field.
+- `createdDate` is when the gear was registered in Garmin Connect (not necessarily `firstUseDate`).
+
+---
+
 ## API 10: Activity Gear (Linked Equipment)
 
 ```bash
