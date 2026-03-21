@@ -108,6 +108,45 @@ python garmin_cli.py wellness training-readiness --date 2026-03-09
 python garmin_cli.py wellness training-status --date 2026-03-09
 ```
 
+## Training Analysis & Memory
+
+After any training analysis or advice conversation, **automatically save key findings to memory** before the conversation ends. This includes:
+
+### After analyzing a race or significant training run
+Update `running-profile.md` in memory with:
+- Distance, time, elevation gain/loss, avg HR, max HR
+- Pacing breakdown (per-quarter or per-segment)
+- Run/walk ratio, cadence
+- Key performance insights (cardiac drift, fade patterns, nutrition issues)
+- Comparison to previous races/efforts where relevant
+
+### After giving training advice or planning
+Update `running-profile.md` in memory with:
+- Training plan changes, new priorities, or focus shifts
+- Specific workout recommendations given (e.g. "add weekly downhill repeats")
+- Target paces, HR zones, or volume goals discussed
+- Injury concerns or recovery notes
+
+### After analyzing wellness/fitness trends
+Update `MEMORY.md` user profile with:
+- Updated VO2 Max, resting HR, HRV baseline, or body weight (with date)
+- Notable fitness trend changes (e.g. "VO2 trending down since Feb")
+- Recovery or readiness patterns worth tracking
+
+### After race planning discussions
+Update `running-profile.md` in memory with:
+- Race name, date, course stats, key challenges
+- Pacing strategy and HR targets
+- Nutrition/hydration plan
+- Gear decisions
+- Training priorities for the build-up period
+
+### General rules
+- Updates happen automatically at the end of the conversation — do not wait to be asked
+- Always include dates so information doesn't go stale
+- When updating, preserve existing content — append or revise, don't overwrite unrelated sections
+- If new analysis contradicts earlier memory (e.g. revised pacing strategy), update the old entry rather than creating duplicates
+
 ## API Spec
 
 Full API documentation is in `garmin-api-spec.md`. Reference this when adding new endpoints to the CLI.
