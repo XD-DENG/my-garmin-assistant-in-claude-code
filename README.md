@@ -1,50 +1,85 @@
-# Garmin Connect CLI
+# My Garmin Assistant
 
-A command-line tool for accessing Garmin Connect APIs. Outputs raw JSON for programmatic use.
+A [Claude Code skill](https://docs.anthropic.com/en/docs/claude-code/skills) that gives Claude access to your Garmin Connect data — activities, wellness, sleep, training analysis, and fitness metrics.
 
-## Setup
+Once installed, Claude can automatically fetch and analyze your Garmin data when you ask about your workouts, heart rate, HRV, stress, weight, training readiness, and more. Works from any project.
+
+## Installation
+
+**Option A: Clone from GitHub**
 
 ```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install requests brotli requests-oauthlib
+git clone https://github.com/XD-DENG/my-garmin-assistant-in-claude-code.git ~/.claude/skills/my-garmin-assistant
 ```
 
-## Authentication
-
-### Recommended: OAuth login (no browser dev tools needed)
-
-Log in with your Garmin email and password:
+**Option B: Copy from a local checkout**
 
 ```bash
+mkdir -p ~/.claude/skills
+cp -r /path/to/my-garmin-assistant ~/.claude/skills/my-garmin-assistant
+```
+
+### Install Python dependencies
+
+```bash
+cd ~/.claude/skills/my-garmin-assistant/scripts
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+Or, if you have [uv](https://docs.astral.sh/uv/) installed, skip the venv entirely — the CLI will auto-install dependencies on first run.
+
+### Authenticate with Garmin
+
+```bash
+cd ~/.claude/skills/my-garmin-assistant/scripts
+source venv/bin/activate
 python garmin_auth.py
 ```
 
-Tokens are saved to `~/.garmin_tokens/`. The OAuth1 token lasts ~1 year; OAuth2 tokens refresh automatically. The CLI reads tokens automatically — no env vars or flags needed.
+This prompts for your Garmin email and password. Tokens are saved to `~/.garmin_tokens/`. The OAuth1 token lasts ~1 year; OAuth2 tokens refresh automatically.
 
-### Alternative: Manual cookie auth
-
-Extract Cookie + CSRF token from browser dev tools on [connect.garmin.com](https://connect.garmin.com) and provide them via env vars or CLI flags:
-
-```bash
-export GARMIN_COOKIE='your_cookie_value'
-export GARMIN_CSRF_TOKEN='your_csrf_token_value'
-```
-
-Auth priority: CLI flags > env vars > `~/.garmin_tokens/` (OAuth).
+If you prefer manual cookie auth, see the [CLI reference](references/cli-reference.md#cookie-shell-escaping-cookie-auth-only).
 
 ## Usage
 
-```bash
-python garmin_cli.py --help
-python garmin_cli.py activities search --limit 20 --start 0 --activity-type running
-python garmin_cli.py activities download --activity-id 22048373565
-python garmin_cli.py sleep stats --start-date 2026-02-21 --end-date 2026-02-27
+Once installed, you can:
+
+**Let Claude invoke it automatically** — just ask about your Garmin data from any project:
+
+```
+How did my run go yesterday?
+What's my HRV trend this month?
+Show me my last 5 activities
 ```
 
-See the module docstring in `garmin_cli.py` for all available commands, flags, and examples.
+**Or invoke it directly** with the skill name:
+
+```
+/my-garmin-assistant What's my training readiness today?
+```
+
+## What's included
+
+| Directory | Contents |
+|-----------|----------|
+| `SKILL.md` | Skill definition — instructions Claude follows when accessing Garmin data |
+| `scripts/` | Python CLI (`garmin_cli.py`) and OAuth auth script (`garmin_auth.py`) |
+| `references/` | CLI command reference, Garmin API specs (loaded on-demand by Claude) |
+
+## Available data
+
+- **Activities**: search, detail, FIT file download, linked gear
+- **Wellness**: daily summary, heart rate, HRV, stress (daily/weekly), weight, training readiness, training status
+- **Sleep**: daily summaries, single-night detail with time-series
+- **Metrics**: hill score, endurance score
+- **Calendar**: monthly view, note content
+- **Gear**: list all gear, filter by type/status
+
+See [references/cli-reference.md](references/cli-reference.md) for the full command reference.
 
 ## API Reference
 
-- **`garmin-api-spec.md`** — Primary API documentation (activities, sleep, scores, calendar, FIT file download). Covers the endpoints currently implemented in the CLI plus the activity file download API.
-- **`garmin-api-from-garth.md`** — Supplementary endpoints extracted from the [garth](https://github.com/matin/garth) Python package. Covers wellness/health data (heart rate, HRV, stress, body battery, steps, weight, hydration, intensity minutes, training readiness/status, user profile/settings) not yet in the primary spec.
+- [references/garmin-api-spec.md](references/garmin-api-spec.md) — Primary API documentation (activities, sleep, scores, calendar, FIT file download)
+- [references/garmin-api-from-garth.md](references/garmin-api-from-garth.md) — Supplementary wellness/health endpoints extracted from the [garth](https://github.com/matin/garth) Python package

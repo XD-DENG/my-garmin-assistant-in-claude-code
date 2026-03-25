@@ -1,5 +1,6 @@
-venv/
+scripts/venv/
 __pycache__/
 *.pyc
 .env
 .DS_Store
+.claude/

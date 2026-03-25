@@ -138,16 +138,16 @@ python garmin_cli.py activities search --limit 100 --start 0 \\
   --search pickleball --start-date 2025-01-01 --end-date 2026-03-02
 
 # Get detail for a specific activity
-python garmin_cli.py activities detail --activity-id 21942154782
+python garmin_cli.py activities detail --activity-id 18000000001
 
 # Download original FIT file for an activity
-python garmin_cli.py activities download --activity-id 21942154782
+python garmin_cli.py activities download --activity-id 18000000001
 
 # Download FIT file to a specific directory
-python garmin_cli.py activities download --activity-id 21942154782 --output-dir /tmp
+python garmin_cli.py activities download --activity-id 18000000001 --output-dir /tmp
 
 # Get gear linked to an activity (e.g. shoes)
-python garmin_cli.py activities gear --activity-id 21993647638
+python garmin_cli.py activities gear --activity-id 18000000002
 
 # Get hill score for a date range
 python garmin_cli.py metrics hill-score --start-date 2026-01-30 --end-date 2026-02-26
@@ -165,7 +165,7 @@ python garmin_cli.py sleep detail --date 2026-02-26
 python garmin_cli.py calendar month --year 2026 --month 1
 
 # Get a note's full content
-python garmin_cli.py calendar note --note-id 126088664
+python garmin_cli.py calendar note --note-id 100000001
 
 # Get daily wellness summary (steps, calories, HR, stress, body battery, SpO2, etc.)
 python garmin_cli.py wellness daily-summary --date 2026-03-09

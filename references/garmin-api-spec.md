@@ -147,8 +147,8 @@ Every activity object contains all fields listed below. Fields marked with **(tr
 
 | Field | Type | Example | Notes |
 |-------|------|---------|-------|
-| `activityId` | number | `21942154782` | Unique Garmin activity ID |
-| `activityUUID` | string | `"2e35002b-3559-437c-a985-d924ac276e73"` | UUID format |
+| `activityId` | number | `18000000001` | Unique Garmin activity ID |
+| `activityUUID` | string | `"b2c3d4e5-6789-0123-abcd-ef2345678901"` | UUID format |
 | `activityName` | string | `"Black Mountain - Trail Running"` | User-editable name |
 | `description` | string \| null | `"with Deliang"` | **(sparse)** — null in 11/20 |
 | `activityType` | object | See below | Structured type info |
@@ -399,8 +399,8 @@ Pilates activities contain `summarizedExerciseSets` (absent/empty for trail runs
 | Field | Type | Example | Notes |
 |-------|------|---------|-------|
 | `manufacturer` | string | `"GARMIN"` | |
-| `deviceId` | number | `3483859861` | |
-| `ownerId` | number | `90568238` | Garmin user ID |
+| `deviceId` | number | `3960000000` | |
+| `ownerId` | number | `12345678` | Garmin user ID |
 | `ownerFullName` | string | `"XD-DENG"` | |
 | `ownerDisplayName` | string | `"26ebc362-..."` | UUID-style display name |
 | `ownerProfileImageUrlSmall` | string | S3 URL | |
@@ -520,11 +520,11 @@ The response is a single JSON object with these top-level sections:
 
 | Field | Type | Example | Notes |
 |-------|------|---------|-------|
-| `activityId` | number | `21797148497` | Same as API 1 |
+| `activityId` | number | `18000000005` | Same as API 1 |
 | `activityUUID` | object | `{"uuid": "c2cd7220-..."}` | Note: nested object, not a plain string |
 | `activityName` | string | `"Huddart-Skyline-Purisima Redwoods - Trail Running"` | |
 | `description` | string \| null | `"- Ran with Deliang\n- ..."` | Multi-line, may contain Chinese characters |
-| `userProfileId` | number | `90568238` | Same as `ownerId` in API 1 |
+| `userProfileId` | number | `12345678` | Same as `ownerId` in API 1 |
 | `isMultiSportParent` | boolean | `false` | |
 | `locationName` | string | `"San Mateo County"` | Reverse-geocoded (at root level, not in summaryDTO) |
 
@@ -621,7 +621,7 @@ Same user info as API 1 (`displayname`, `fullname`, profile image URLs, `userPro
 
 ```json
 {
-  "deviceId": "3483859861",
+  "deviceId": "3960000000",
   "deviceTypePk": 37073,
   "deviceVersionPk": 1005232
 }
@@ -856,7 +856,7 @@ This is a **different service** from APIs 1 & 2 (`metrics-service` vs `activity-
 
 ```json
 {
-  "userProfilePK": 90568238,
+  "userProfilePK": 12345678,
   "startDate": "2026-01-30",
   "endDate": "2026-02-26",
   "periodAvgScore": { "2026-01-30": 73 },
@@ -869,7 +869,7 @@ This is a **different service** from APIs 1 & 2 (`metrics-service` vs `activity-
 
 | Field | Type | Example | Notes |
 |-------|------|---------|-------|
-| `userProfilePK` | number | `90568238` | Same user ID as other APIs |
+| `userProfilePK` | number | `12345678` | Same user ID as other APIs |
 | `startDate` | string | `"2026-01-30"` | Echoes query param |
 | `endDate` | string | `"2026-02-26"` | Echoes query param |
 | `periodAvgScore` | object | `{"2026-01-30": 73}` | Average score for the period, keyed by start date |
@@ -881,8 +881,8 @@ One entry per day in the date range, ordered newest-first (descending by date).
 
 | Field | Type | Example | Notes |
 |-------|------|---------|-------|
-| `userProfilePK` | number | `90568238` | |
-| `deviceId` | number | `3483859861` | Same device ID as in activity APIs |
+| `userProfilePK` | number | `12345678` | |
+| `deviceId` | number | `3960000000` | Same device ID as in activity APIs |
 | `calendarDate` | string | `"2026-02-26"` | ISO date |
 | `overallScore` | number | `74` | Combined hill score (0–100 scale) |
 | `strengthScore` | number | `36` | Hill strength component |
@@ -947,7 +947,7 @@ Same `metrics-service` as API 3 (Hill Score), but for Garmin's **Endurance Score
 
 ```json
 {
-  "userProfilePK": 90568238,
+  "userProfilePK": 12345678,
   "startDate": "2025-12-06",
   "endDate": "2026-02-27",
   "avg": 7237,
@@ -961,7 +961,7 @@ Same `metrics-service` as API 3 (Hill Score), but for Garmin's **Endurance Score
 
 | Field | Type | Example | Notes |
 |-------|------|---------|-------|
-| `userProfilePK` | number | `90568238` | Same user ID as other APIs |
+| `userProfilePK` | number | `12345678` | Same user ID as other APIs |
 | `startDate` | string | `"2025-12-06"` | Echoes query param |
 | `endDate` | string | `"2026-02-27"` | Echoes query param |
 | `avg` | number | `7237` | Period average endurance score |
@@ -1022,8 +1022,8 @@ A single object representing the most recent day's endurance score with classifi
 
 ```json
 {
-  "userProfilePK": 90568238,
-  "deviceId": 3483859861,
+  "userProfilePK": 12345678,
+  "deviceId": 3960000000,
   "calendarDate": "2026-02-27",
   "overallScore": 7460,
   "classification": 5,
@@ -1043,8 +1043,8 @@ A single object representing the most recent day's endurance score with classifi
 
 | Field | Type | Example | Notes |
 |-------|------|---------|-------|
-| `userProfilePK` | number | `90568238` | |
-| `deviceId` | number | `3483859861` | Same device as other APIs |
+| `userProfilePK` | number | `12345678` | |
+| `deviceId` | number | `3960000000` | Same device as other APIs |
 | `calendarDate` | string | `"2026-02-27"` | Date of this snapshot |
 | `overallScore` | number | `7460` | Current endurance score |
 | `classification` | number | `5` | Classification tier (see scale below) |
@@ -1336,7 +1336,7 @@ Same `sleep-service` as API 5, but a **different sub-endpoint** (`sleep/dailySle
 | Field | Type | Example | Notes |
 |-------|------|---------|-------|
 | `id` | number | `1772088847000` | Same value as `sleepStartTimestampGMT` |
-| `userProfilePK` | number | `90568238` | Same user ID as other APIs |
+| `userProfilePK` | number | `12345678` | Same user ID as other APIs |
 | `calendarDate` | string | `"2026-02-26"` | Wake-up date (not sleep-start date) |
 | `sleepWindowConfirmed` | boolean | `true` | Whether window was auto-confirmed |
 | `sleepWindowConfirmationType` | string | `"enhanced_confirmed_final"` | Confirmation method |
@@ -1420,9 +1420,9 @@ Both have identical structure — `sleepNeed` is tonight's need, `nextSleepNeed`
 
 | Field | Type | Example | Notes |
 |-------|------|---------|-------|
-| `userProfilePk` | number | `90568238` | |
+| `userProfilePk` | number | `12345678` | |
 | `calendarDate` | string | `"2026-02-26"` | |
-| `deviceId` | number | `3483859861` | |
+| `deviceId` | number | `3960000000` | |
 | `timestampGmt` | string | `"2026-02-25T16:45:07"` | When this need was computed |
 | `baseline` | number | `470` | Base sleep need in **minutes** (no adjustments) |
 | `actual` | number | `490` | Adjusted sleep need in **minutes** — this is the `sleepNeed` value in API 5 |
@@ -1440,8 +1440,8 @@ One entry per nap detected during the day.
 
 | Field | Type | Example | Notes |
 |-------|------|---------|-------|
-| `userProfilePK` | number | `90568238` | |
-| `deviceId` | number | `3483859861` | |
+| `userProfilePK` | number | `12345678` | |
+| `deviceId` | number | `3960000000` | |
 | `calendarDate` | string | `"2026-02-26"` | |
 | `napTimeSec` | number | `1440` | Nap duration in **seconds** (1440s = 24 min) |
 | `napStartTimestampGMT` | string | `"2026-02-26T18:27:10"` | ISO datetime, UTC |
@@ -1527,8 +1527,8 @@ Note: `sleepStress` and `sleepBodyBattery` have identical intervals and item cou
 
 | Field | Type | Example | Notes |
 |-------|------|---------|-------|
-| `userProfilePK` | number | `90568238` | |
-| `deviceId` | number | `3483859861` | |
+| `userProfilePK` | number | `12345678` | |
+| `deviceId` | number | `3960000000` | |
 | `epochTimestamp` | string | `"2026-02-26T06:55:00.0"` | ISO datetime, UTC — start of epoch |
 | `epochDuration` | number | `60` | Epoch duration in **seconds** (always 60) |
 | `calendarDate` | string | `"2026-02-25T00:00:00.0"` | Local date of sleep start (UTC-8 = Feb 25 for a Feb 26 wake-up) |
@@ -1569,8 +1569,8 @@ Covers the full sleep window in contiguous segments.
 
 | Field | Type | Example | Notes |
 |-------|------|---------|-------|
-| `userProfilePk` | number | `90568238` | |
-| `deviceId` | number | `3483859861` | |
+| `userProfilePk` | number | `12345678` | |
+| `deviceId` | number | `3960000000` | |
 | `sleepMeasurementStartGMT` | string | `"2026-02-26T06:55:00.0"` | ISO datetime, UTC — SpO2 window start (≈ sleep start) |
 | `sleepMeasurementEndGMT` | string | `"2026-02-26T14:19:00.0"` | ISO datetime, UTC — SpO2 window end (≈ sleep end) |
 | `averageSPO2` | number | `97` | Average SpO2 % |
@@ -1724,7 +1724,7 @@ The most common item type. Contains summary metrics for each recorded activity.
 
 | Field | Type | Example | Notes |
 |-------|------|---------|-------|
-| `id` | number | `21349357653` | Activity ID (same as `activityId` in APIs 1 & 2) |
+| `id` | number | `18000000004` | Activity ID (same as `activityId` in APIs 1 & 2) |
 | `itemType` | string | `"activity"` | |
 | `activityTypeId` | number | `6` | Garmin activity type ID |
 | `title` | string | `"Black Mountain"` | Activity name |
@@ -1827,7 +1827,7 @@ User-created text notes attached to a date.
 
 | Field | Type | Example | Notes |
 |-------|------|---------|-------|
-| `id` | number | `126088664` | Note ID |
+| `id` | number | `100000001` | Note ID |
 | `itemType` | string | `"note"` | |
 | `title` | string | `"Ankle issue"` | Note text (may contain Chinese characters) |
 | `date` | string | `"2025-12-30"` | ISO date |
@@ -1946,7 +1946,7 @@ Same `calendar-service` as API 7 (Monthly Calendar), but a sub-endpoint for retr
 
 | Parameter | Type | Example | Notes |
 |-----------|------|---------|-------|
-| `{noteId}` | number | `126088664` | Note ID from the calendar item's `id` field (API 7) |
+| `{noteId}` | number | `100000001` | Note ID from the calendar item's `id` field (API 7) |
 
 ### File Format
 
@@ -1957,7 +1957,7 @@ Same `calendar-service` as API 7 (Monthly Calendar), but a sub-endpoint for retr
 
 ```json
 {
-  "id": 126088664,
+  "id": 100000001,
   "noteName": "Ankle issue",
   "content": "The left ankle is not feeling good, and it also (likely) resulted in the knee pain after yesterday run\n\nThe ankle issue started from a hiking in Utah in end of November. It has been lasting for more than one month already.",
   "date": "2025-12-30"
@@ -1968,7 +1968,7 @@ Same `calendar-service` as API 7 (Monthly Calendar), but a sub-endpoint for retr
 
 | Field | Type | Example | Notes |
 |-------|------|---------|-------|
-| `id` | number | `126088664` | Same as the note `id` in API 7's calendar items |
+| `id` | number | `100000001` | Same as the note `id` in API 7's calendar items |
 | `noteName` | string | `"Ankle issue"` | Same as `title` in API 7's calendar item |
 | `content` | string | `"The left ankle is..."` | Full note body text. May be multi-line (`\n` separators). May contain Chinese characters. |
 | `date` | string | `"2025-12-30"` | ISO date (YYYY-MM-DD), same as API 7 |
@@ -2011,12 +2011,12 @@ Downloads the original activity file (FIT format) as a ZIP archive. This is the 
 
 | Parameter | Type | Example | Notes |
 |-----------|------|---------|-------|
-| `{activityId}` | number | `22048373565` | Activity ID from the activity list (API 1) or activity detail (API 2) |
+| `{activityId}` | number | `18000000003` | Activity ID from the activity list (API 1) or activity detail (API 2) |
 
 ### Response Format
 
 - **Content-Type**: `application/x-zip-compressed`
-- **Content-Disposition**: `attachment; filename="{activityId}.zip"` (e.g. `22048373565.zip`)
+- **Content-Disposition**: `attachment; filename="{activityId}.zip"` (e.g. `18000000003.zip`)
 - **Compression**: Not Brotli — the response is a raw ZIP archive (unlike APIs 1–8 which return Brotli-compressed JSON)
 - **Cache-Control**: `no-cache, no-store, private`
 
@@ -2026,7 +2026,7 @@ The ZIP archive contains a single file:
 
 | File | Format | Example |
 |------|--------|---------|
-| `{activityId}_ACTIVITY.fit` | Garmin FIT (Flexible and Interoperable Data Transfer) | `22048373565_ACTIVITY.fit` |
+| `{activityId}_ACTIVITY.fit` | Garmin FIT (Flexible and Interoperable Data Transfer) | `18000000003_ACTIVITY.fit` |
 
 Example from a real download:
 - **ZIP size**: 47,842 bytes
@@ -2124,8 +2124,8 @@ Lists all user gear, optionally filtered by status and type. Unlike API 10 (whic
 
 | Field | Type | Example | Notes |
 |-------|------|---------|-------|
-| `uuid` | string | `"2bd79826-..."` | Unique gear identifier |
-| `userProfilePk` | number | `90568238` | User profile ID |
+| `uuid` | string | `"a1b2c3d4-..."` | Unique gear identifier |
+| `userProfilePk` | number | `12345678` | User profile ID |
 | `gearType` | string | `"SHOES"` | Gear category |
 | `status` | string | `"ACTIVE"` | `"ACTIVE"` or `"RETIRED"` |
 | `name` | string | `"NN 蓝"` | User-assigned gear name (can be empty) |
@@ -2146,8 +2146,8 @@ Lists all user gear, optionally filtered by status and type. Unlike API 10 (whic
 ```json
 [
   {
-    "uuid": "2bd79826-731a-4010-a9d9-bcd5fc28e29a",
-    "userProfilePk": 90568238,
+    "uuid": "a1b2c3d4-5678-9012-abcd-ef1234567890",
+    "userProfilePk": 12345678,
     "gearType": "SHOES",
     "status": "ACTIVE",
     "brand": "Brooks Hyperion 2",
@@ -2196,7 +2196,7 @@ Returns the gear (equipment) linked to a specific activity. This is useful for t
 
 | Parameter | Type | Example | Notes |
 |-----------|------|---------|-------|
-| `{activityId}` | number | `21993647638` | Activity ID from the activity list (API 1) or activity detail (API 2) |
+| `{activityId}` | number | `18000000002` | Activity ID from the activity list (API 1) or activity detail (API 2) |
 
 ### Response Format
 
@@ -2207,8 +2207,8 @@ Returns the gear (equipment) linked to a specific activity. This is useful for t
 
 | Field | Type | Example | Notes |
 |-------|------|---------|-------|
-| `uuid` | string | `"2bd79826-731a-4010-a9d9-bcd5fc28e29a"` | Unique gear identifier |
-| `userProfilePk` | number | `90568238` | User profile ID |
+| `uuid` | string | `"a1b2c3d4-5678-9012-abcd-ef1234567890"` | Unique gear identifier |
+| `userProfilePk` | number | `12345678` | User profile ID |
 | `gearType` | string | `"SHOES"` | Gear category. Known values: `"SHOES"` |
 | `status` | string | `"ACTIVE"` | Gear status. Known values: `"ACTIVE"` |
 | `name` | string | `""` | User-assigned gear name (can be empty) |
@@ -2229,8 +2229,8 @@ Returns the gear (equipment) linked to a specific activity. This is useful for t
 ```json
 [
   {
-    "uuid": "2bd79826-731a-4010-a9d9-bcd5fc28e29a",
-    "userProfilePk": 90568238,
+    "uuid": "a1b2c3d4-5678-9012-abcd-ef1234567890",
+    "userProfilePk": 12345678,
     "gearType": "SHOES",
     "status": "ACTIVE",
     "name": "",
