@@ -160,6 +160,16 @@ General rules:
 - If new analysis contradicts earlier memory, update the old entry rather than creating duplicates
 - When fetching data from multiple Garmin endpoints, write a single temp Python script instead of many individual CLI calls to minimize permission prompts
 
+## Training recommendations
+
+When designing training plans, recommending workouts, or advising on race preparation, ground all recommendations in the athlete's Garmin data:
+- Use training load and ACWR to modulate volume increases — don't blindly follow a template
+- Monitor HRV and resting HR trends to detect under-recovery before the athlete feels it
+- Adjust easy-run pace based on actual HR data and cardiac drift patterns, not arbitrary pace targets
+- Use training readiness score to decide whether to execute or modify a planned hard session
+- Track pace-to-HR ratio (cardiac efficiency) over time to measure fitness progression independent of feel
+- Consider weekly vertical gain as a separate load variable from horizontal distance for trail runners
+
 ## Additional resources
 
 - For complete CLI command reference with all flags, see [references/cli-reference.md](references/cli-reference.md)
